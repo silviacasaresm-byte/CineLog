@@ -1135,7 +1135,11 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   <div id="content">
     <div id="view-dashboard" class="view active">
       <div class="stats-grid" id="dash-stats"></div>
-      <div class="sec-title">▶ Viendo ahora</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px">
+        <div class="sec-title" style="margin-bottom:0;flex:1">▶ Viendo ahora</div>
+        <button id="btn-sync-all" class="btn btn-secondary btn-sm" title="Sincronizar todas las series con TMDB">🔄 Sincronizar series</button>
+      </div>
+      <div id="sync-all-status" style="display:none;margin-bottom:10px;font-size:12px;font-weight:700;color:var(--label3);background:var(--fill3);border-radius:var(--r-md);padding:10px 14px"></div>
       <div class="now-grid" id="now-list"></div>
       <div class="sec-title">◈ Actividad reciente</div>
       <div class="pending-list" id="recent-list"></div>
@@ -1499,6 +1503,7 @@ function seriesDetailHTML(s){
     +'<div class="det-actions">'
     +'<button class="btn btn-primary" data-action="edit" data-id="'+s.id+'" data-type="series">✎ Editar</button>'
     +'<button class="btn btn-secondary" data-action="add-season" data-id="'+s.id+'">+ Temporada</button>'
+    +(s.tmdbId?'<button class="btn btn-secondary btn-sm" data-action="sync-seasons" data-id="'+s.id+'" title="Buscar nuevas temporadas en TMDB">🔄 Sincronizar</button>':'')
     +(s.imdbUrl?'<a href="'+esc(s.imdbUrl)+'" target="_blank" class="btn btn-secondary btn-sm">IMDb ↗</a>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+s.id+'" data-type="series">🗑 Eliminar</button>'
     +'</div>'
@@ -1797,6 +1802,7 @@ function saveItem(){
     genres, universes,
     imdbRating:parseFloat(id('f-imdb-rating')?.value)||null,
     imdbUrl:id('f-imdb-url')?.value||'',
+    tmdbId:parseInt(id('f-tmdb-id')?.value)||null,
     posterUrl:id('f-poster')?.value||'',
     emoji:id('f-emoji')?.value||'',
     synopsis:id('f-synopsis')?.value||'',
@@ -1916,6 +1922,16 @@ async function tmdbFill(tmdbId, mediaType){
     if(genres) set('f-genres',genres);
     if(d.vote_average) set('f-imdb-rating',d.vote_average.toFixed(1));
     if(imdbId) set('f-imdb-url','https://www.imdb.com/title/'+imdbId+'/');
+    // Store tmdbId in hidden field for later sync
+    let hiddenTmdb = id('f-tmdb-id');
+    if(!hiddenTmdb){
+      hiddenTmdb = document.createElement('input');
+      hiddenTmdb.type = 'hidden';
+      hiddenTmdb.id = 'f-tmdb-id';
+      const mb = id('modal-body');
+      if(mb) mb.appendChild(hiddenTmdb);
+    }
+    hiddenTmdb.value = tmdbId;
     if(mediaType==='movie'){
       const dir=(d.credits?.crew||[]).filter(c=>c.job==='Director').map(c=>c.name).join(', ');
       if(dir) set('f-director',dir);
@@ -2085,6 +2101,151 @@ Si no conoces la película o no tiene frases famosas, responde: {"quotes":[]}`
   }
 }
 
+// ── Sync seasons from TMDB (only adds NEW seasons, preserves existing data) ──
+async function syncSeasons(seriesId){
+  const s = S.series.find(x=>x.id===seriesId);
+  if(!s || !s.tmdbId){ alert('Esta serie no tiene ID de TMDB. Edítala y búscala de nuevo para vincularla.'); return; }
+
+  // Show loading in the sync button
+  const btn = document.querySelector('[data-action="sync-seasons"][data-id="'+seriesId+'"]');
+  const origText = btn ? btn.textContent : '';
+  if(btn){ btn.textContent = '⏳ Sincronizando...'; btn.disabled = true; }
+
+  try{
+    const res = await fetch(TMDB_BASE+'/tv/'+s.tmdbId+'?api_key='+TMDB_KEY+'&language=es-ES');
+    const d = await res.json();
+    const totalSeasons = d.number_of_seasons || 0;
+    const existingNums = new Set((s.seasons||[]).map(t=>t.season_number||t.number));
+    
+    // Find which season numbers are new
+    const newNums = [];
+    for(let i=1; i<=totalSeasons; i++){
+      if(!existingNums.has(i)) newNums.push(i);
+    }
+
+    if(newNums.length === 0){
+      if(btn){ btn.textContent = '✓ Al día'; btn.disabled = false; }
+      setTimeout(()=>{ if(btn){ btn.textContent=origText; } }, 2500);
+      return;
+    }
+
+    if(btn) btn.textContent = '⏳ Cargando '+newNums.length+' temporada(s)...';
+
+    // Fetch new seasons in parallel
+    const newSeasonData = await Promise.all(newNums.map(n=>
+      fetch(TMDB_BASE+'/tv/'+s.tmdbId+'/season/'+n+'?api_key='+TMDB_KEY+'&language=es-ES')
+        .then(r=>r.json()).catch(()=>null)
+    ));
+
+    let added = 0;
+    newSeasonData.forEach((sd, i)=>{
+      if(!sd || sd.status_code) return;
+      const seasonNum = newNums[i];
+      s.seasons.push({
+        id: uid(),
+        number: seasonNum,
+        title: '',
+        desc: sd.overview||'',
+        episodes: (sd.episodes||[]).map((ep,ei)=>({
+          id: uid(),
+          number: ep.episode_number||(ei+1),
+          title: ep.name||('Episodio '+(ei+1)),
+          desc: ep.overview||'',
+          watched: false, current: false, rating: 0, minute: 0
+        }))
+      });
+      added++;
+    });
+
+    // Sort seasons by number
+    s.seasons.sort((a,b)=>(a.number||0)-(b.number||0));
+    s.updatedAt = Date.now();
+    save();
+
+    if(btn){ btn.textContent='✅ +'+added+' temporada'+(added!==1?'s':''); btn.disabled=false; }
+    setTimeout(()=>{ openDetail(seriesId,'series'); }, 1200);
+
+  } catch(e){
+    if(btn){ btn.textContent='⚠️ Error'; btn.disabled=false; }
+    setTimeout(()=>{ if(btn) btn.textContent=origText; }, 2000);
+  }
+}
+
+// ── Sync ALL linked series at once ──
+async function syncAllSeries(){
+  const btn = id('btn-sync-all');
+  const statusEl = id('sync-all-status');
+  const linked = S.series.filter(s=>s.tmdbId && s.status!=='pending');
+
+  if(linked.length===0){
+    if(statusEl){ statusEl.style.display='block'; statusEl.textContent='ℹ️ Ninguna serie está vinculada a TMDB todavía. Edita una serie y búscala para vincularla.'; }
+    setTimeout(()=>{ if(statusEl) statusEl.style.display='none'; }, 4000);
+    return;
+  }
+
+  if(btn){ btn.textContent='⏳ Sincronizando...'; btn.disabled=true; }
+  if(statusEl){ statusEl.style.display='block'; statusEl.textContent='🔄 Comprobando '+linked.length+' series...'; }
+
+  let totalNew=0, checked=0, errors=0;
+  const results=[];
+
+  for(const s of linked){
+    try{
+      const res = await fetch(TMDB_BASE+'/tv/'+s.tmdbId+'?api_key='+TMDB_KEY+'&language=es-ES');
+      const d = await res.json();
+      const totalSeasons = d.number_of_seasons||0;
+      const existingNums = new Set((s.seasons||[]).map(t=>t.season_number||t.number));
+      const newNums = [];
+      for(let i=1;i<=totalSeasons;i++){ if(!existingNums.has(i)) newNums.push(i); }
+
+      if(newNums.length>0){
+        if(statusEl) statusEl.textContent='🎬 Descargando nuevas temporadas de "'+s.title+'"...';
+        const newSeasonData = await Promise.all(newNums.map(n=>
+          fetch(TMDB_BASE+'/tv/'+s.tmdbId+'/season/'+n+'?api_key='+TMDB_KEY+'&language=es-ES')
+            .then(r=>r.json()).catch(()=>null)
+        ));
+        newSeasonData.forEach((sd,i)=>{
+          if(!sd||sd.status_code) return;
+          s.seasons.push({
+            id:uid(), number:newNums[i], title:'', desc:sd.overview||'',
+            episodes:(sd.episodes||[]).map((ep,ei)=>({
+              id:uid(), number:ep.episode_number||(ei+1),
+              title:ep.name||('Episodio '+(ei+1)),
+              desc:ep.overview||'',
+              watched:false,current:false,rating:0,minute:0
+            }))
+          });
+          totalNew++;
+        });
+        s.seasons.sort((a,b)=>(a.number||0)-(b.number||0));
+        s.updatedAt=Date.now();
+        results.push('✅ '+s.title+': +'+newNums.length+' temporada'+(newNums.length!==1?'s':''));
+      } else {
+        results.push('✓ '+s.title+': al día');
+      }
+    } catch(e){
+      errors++;
+      results.push('⚠️ '+s.title+': error');
+    }
+    checked++;
+    if(statusEl) statusEl.textContent='🔄 '+checked+'/'+linked.length+' series comprobadas...';
+  }
+
+  if(totalNew>0) save();
+  updateBadges();
+
+  const summary = (totalNew>0 ? '🎉 '+totalNew+' temporada'+(totalNew!==1?'s nuevas':' nueva')+' añadida'+(totalNew!==1?'s':'')+'. ' : '✓ Todo al día. ')
+    +(errors>0 ? errors+' error'+(errors!==1?'es':'')+'.' : '');
+
+  if(btn){ btn.textContent='🔄 Sincronizar series'; btn.disabled=false; }
+  if(statusEl){
+    statusEl.innerHTML = '<div style="font-weight:800;margin-bottom:6px">'+summary+'</div>'
+      +'<div style="font-size:11px;color:var(--label3);line-height:1.7">'+results.join('<br>')+'</div>';
+    setTimeout(()=>{ if(statusEl) statusEl.style.display='none'; }, 8000);
+  }
+  renderDashboard();
+}
+
 // Parse OMDb awards string into clean array
 // e.g. "Won 4 Oscars. Another 21 wins & 43 nominations." → ["4 Oscars", "21 premios", "43 nominaciones"]
 function parseAwards(str){
@@ -2135,7 +2296,7 @@ document.addEventListener('click', function(e){
   if(e.target.id==='modal-x'){ closeModal(); return; }
 
   // Add button
-  if(e.target.id==='btn-add'){ openAddModal(); return; }
+  if(e.target.id==='btn-sync-all'){ syncAllSeries(); return; }
   if(e.target.id==='btn-refresh'){
     const btn = e.target;
     btn.style.transition = 'transform 0.5s ease';
@@ -2185,6 +2346,7 @@ document.addEventListener('click', function(e){
     save(); closePanel(); renderView(); return;
   }
   if(action==='add-season'){ openSeasonModal(el.dataset.id); return; }
+  if(action==='sync-seasons'){ syncSeasons(el.dataset.id); return; }
   if(action==='add-ep'){ openEpisodeModal(el.dataset.sid, el.dataset.tid); return; }
   if(action==='del-season'){
     if(!confirm('¿Eliminar temporada?')) return;
