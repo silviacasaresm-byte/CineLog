@@ -1656,7 +1656,7 @@ function seriesFormHTML(s){
     +'<div class="form-group"><div class="form-label">Año fin</div><input class="form-input" id="f-end" type="number" value="'+esc(p.endYear||'')+'" placeholder="—"></div>'
     +'</div>'
     +'<div class="form-row">'
-    +'<div class="form-group"><div class="form-label">Plataforma</div><select class="form-select" id="f-platform">'+platforms.map(pl=>'<option value="'+pl+'"'+(p.platform===pl?' selected':'')+'>'+pl+'</option>').join('')+'</select></div>'
+    +'<div class="form-group"><div class="form-label">Plataforma</div><select class="form-select" id="f-platform">'+'<option value=""'+(p.platform?'':' selected')+'>— Sin especificar —</option>'+platforms.map(pl=>'<option value="'+pl+'"'+(p.platform===pl?' selected':'')+'>'+pl+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><div class="form-label">Estado</div><select class="form-select" id="f-status">'+statuses.map(([v,l])=>'<option value="'+v+'"'+(p.status===v?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
     +'</div>'
     +'<div class="form-group"><div class="form-label">Géneros (coma)</div><input class="form-input" id="f-genres" value="'+esc((p.genres||[]).join(', '))+'"></div>'
@@ -1680,7 +1680,7 @@ function movieFormHTML(m){
     +'<div class="form-group"><div class="form-label">Director</div><input class="form-input" id="f-director" value="'+esc(p.director||'')+'"></div>'
     +'</div>'
     +'<div class="form-row">'
-    +'<div class="form-group"><div class="form-label">Plataforma</div><select class="form-select" id="f-platform">'+platforms.map(pl=>'<option value="'+pl+'"'+(p.platform===pl?' selected':'')+'>'+pl+'</option>').join('')+'</select></div>'
+    +'<div class="form-group"><div class="form-label">Plataforma</div><select class="form-select" id="f-platform">'+'<option value=""'+(p.platform?'':' selected')+'>— Sin especificar —</option>'+platforms.map(pl=>'<option value="'+pl+'"'+(p.platform===pl?' selected':'')+'>'+pl+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><div class="form-label">Estado</div><select class="form-select" id="f-status">'+statuses.map(([v,l])=>'<option value="'+v+'"'+(p.status===v?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
     +'</div>'
     +'<div class="form-group"><div class="form-label">Géneros (coma)</div><input class="form-input" id="f-genres" value="'+esc((p.genres||[]).join(', '))+'"></div>'
@@ -1876,8 +1876,14 @@ async function tmdbFill(tmdbId, mediaType){
   const el=id('tmdb-results'); if(!el) return;
   el.innerHTML='<div class="tmdb-status">⏳ Cargando datos...</div>';
   try{
-    const r=await fetch(TMDB_BASE+'/'+mediaType+'/'+tmdbId+'?api_key='+TMDB_KEY+'&language=es-ES&append_to_response=external_ids,credits');
-    const d=await r.json();
+    // Fetch main data + watch providers in parallel
+    const [mainRes, watchRes] = await Promise.all([
+      fetch(TMDB_BASE+'/'+mediaType+'/'+tmdbId+'?api_key='+TMDB_KEY+'&language=es-ES&append_to_response=external_ids,credits'),
+      fetch(TMDB_BASE+'/'+mediaType+'/'+tmdbId+'/watch/providers?api_key='+TMDB_KEY)
+    ]);
+    const d = await mainRes.json();
+    const watchData = await watchRes.json();
+
     const set=(fieldId,val)=>{ const el=id(fieldId); if(el&&val) el.value=val; };
     const title=mediaType==='tv'?d.name:d.title;
     const year=(mediaType==='tv'?d.first_air_date:d.release_date||'').slice(0,4);
@@ -1896,32 +1902,99 @@ async function tmdbFill(tmdbId, mediaType){
       if(dir) set('f-director',dir);
     }
 
+    // ── Detect platform from watch providers (Spain = ES) ──
+    const PLATFORM_MAP = {
+      'Netflix':              'Netflix',
+      'Amazon Prime Video':   'Amazon Prime',
+      'Amazon Video':         'Amazon Prime',
+      'Prime Video':          'Amazon Prime',
+      'Disney Plus':          'Disney+',
+      'Disney+':              'Disney+',
+      'HBO Max':              'HBO Max',
+      'Max':                  'HBO Max',
+      'Apple TV Plus':        'Apple TV+',
+      'Apple TV+':            'Apple TV+',
+      'Apple TV':             'Apple TV+',
+      'Movistar Plus+':       'Canal TV',
+      'Movistar Plus':        'Canal TV',
+      'Filmin':               'Otro',
+      'SkyShowtime':          'Otro',
+      'Paramount Plus':       'Otro',
+      'Paramount+':           'Otro',
+      'Crunchyroll':          'Otro',
+      'MUBI':                 'Otro',
+      'Atresplayer Premium':  'Canal TV',
+      'Mitele Plus':          'Canal TV',
+    };
+
+    let detectedProviders = [];
+    const esProviders = watchData?.results?.ES;
+    if(esProviders){
+      const allProviders = [
+        ...(esProviders.flatrate||[]),
+        ...(esProviders.free||[]),
+        ...(esProviders.ads||[]),
+      ];
+      const seen = new Set();
+      for(const p of allProviders){
+        if(!seen.has(p.provider_name)){ seen.add(p.provider_name); detectedProviders.push(p.provider_name); }
+      }
+    }
+
+    // Map to our dropdown values
+    const mappedProviders = [...new Set(detectedProviders.map(n=>PLATFORM_MAP[n]).filter(Boolean))];
+
+    let provHTML = '';
+    if(mappedProviders.length === 0 && detectedProviders.length > 0){
+      // Providers found but not in our map — show raw names
+      provHTML = '<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--label3)">📺 En España: '+detectedProviders.slice(0,4).join(', ')+' — selecciona manualmente</div>';
+      if(platSel) platSel.value='Otro';
+    } else if(mappedProviders.length === 0){
+      provHTML = '<div style="margin-top:8px;font-size:11px;color:var(--label3)">📺 No encontrado en streaming ES — selecciona manualmente</div>';
+      if(platSel) platSel.value='Otro';
+    } else {
+      // Always show all available platforms as chips so user can pick
+      // Pre-select the first one
+      if(platSel){
+        const match=[...platSel.options].find(o=>o.value===mappedProviders[0]);
+        if(match) platSel.value=mappedProviders[0];
+      }
+      provHTML = '<div style="margin-top:8px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--label3);margin-bottom:5px">📺 Disponible en España'+(mappedProviders.length>1?' — pulsa para seleccionar':'')+':</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:5px">'
+        + mappedProviders.map((p,i) =>
+            '<button type="button" class="plat-pick-btn" data-action="pick-platform" data-plat="'+esc(p)+'" '
+            +'style="padding:5px 12px;border:2px solid '+(i===0?'var(--cin-red)':'var(--sep-opaque)')+';border-radius:20px;'
+            +'background:'+(i===0?'var(--cin-red)':'var(--sys-elevated)')+';'
+            +'color:'+(i===0?'#fff':'var(--label2)')+';'
+            +'font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'
+            +esc(p)+'</button>'
+          ).join('')
+        +'</div></div>';
+    }
+
     // Fetch awards from OMDb using imdbId
     if(imdbId){
-      el.innerHTML='<div class="tmdb-status">🏆 Buscando premios...</div>';
       try{
         const omdbRes=await fetch('https://www.omdbapi.com/?i='+imdbId+'&apikey=trilogy');
         const omdb=await omdbRes.json();
         if(omdb.Response==='True' && omdb.Awards && omdb.Awards!=='N/A'){
-          // Parse OMDb awards string into array of meaningful entries
-          const awardsRaw=omdb.Awards;
-          // Build a readable list from the OMDb awards string
-          const awardsList=parseAwards(awardsRaw);
+          const awardsList=parseAwards(omdb.Awards);
           const awardsEl=id('f-awards');
           if(awardsEl && awardsList.length) awardsEl.value=awardsList.join(', ');
         }
-      }catch(e){ /* awards fetch failed silently */ }
+      }catch(e){ /* silent */ }
     }
 
     if(mediaType==='movie'){
       _pendingSeasons=[];
-      el.innerHTML='<div class="tmdb-ok">✅ <strong>'+esc(title)+'</strong> cargada con premios</div>';
+      el.innerHTML='<div class="tmdb-ok">✅ <strong>'+esc(title)+'</strong> cargada</div>'+provHTML;
       return;
     }
 
     // TV: fetch seasons
     const total=d.number_of_seasons||0;
-    if(!total){ _pendingSeasons=[]; el.innerHTML='<div class="tmdb-ok">✅ '+esc(title)+' cargada</div>'; return; }
+    if(!total){ _pendingSeasons=[]; el.innerHTML='<div class="tmdb-ok">✅ '+esc(title)+' cargada</div>'+provHTML; return; }
     el.innerHTML='<div class="tmdb-status">🎬 Cargando '+total+' temporada(s)...</div>';
     const seasonData=await Promise.all(Array.from({length:total},(_,i)=>
       fetch(TMDB_BASE+'/tv/'+tmdbId+'/season/'+(i+1)+'?api_key='+TMDB_KEY+'&language=es-ES').then(r=>r.json()).catch(()=>null)
@@ -1942,7 +2015,7 @@ async function tmdbFill(tmdbId, mediaType){
       });
     });
     const epCount=_pendingSeasons.reduce((a,s)=>a+s.episodes.length,0);
-    el.innerHTML='<div class="tmdb-ok">✅ <strong>'+esc(title)+'</strong> — '+_pendingSeasons.length+' temporadas · '+epCount+' episodios · Pulsa Guardar</div>';
+    el.innerHTML='<div class="tmdb-ok">✅ <strong>'+esc(title)+'</strong> — '+_pendingSeasons.length+' temporadas · '+epCount+' episodios · Pulsa Guardar</div>'+provHTML;
   }catch(e){ el.innerHTML='<div class="tmdb-status">⚠️ Error al cargar.</div>'; }
 }
 
@@ -2014,7 +2087,19 @@ document.addEventListener('click', function(e){
   const action=el.dataset.action;
 
   if(action==='nav'){ navigate(el.dataset.nav); return; }
-  if(action==='close-panel'){ closePanel(); return; }
+  if(action==='pick-platform'){
+    const plat = el.dataset.plat;
+    const platSel = id('f-platform');
+    if(platSel) platSel.value = plat;
+    // Update button styles
+    document.querySelectorAll('.plat-pick-btn').forEach(b=>{
+      const active = b.dataset.plat === plat;
+      b.style.background = active ? 'var(--cin-red)' : 'var(--sys-elevated)';
+      b.style.color = active ? '#fff' : 'var(--label2)';
+      b.style.borderColor = active ? 'var(--cin-red)' : 'var(--sep-opaque)';
+    });
+    return;
+  }
 
   if(action==='edit'){ openEditModal(el.dataset.id, el.dataset.type); return; }
   if(action==='delete'){
