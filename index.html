@@ -518,6 +518,88 @@ nav { padding: 8px 0 12px; flex: 1; }
 }
 .filter-lbl { font-size: 11px; color: var(--label3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
 
+/* ── VIEW TOOLBAR (sort + view toggle) ── */
+.view-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.sort-select {
+  background: var(--sys-elevated);
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--label2);
+  box-shadow: var(--sh-sm);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.sort-select:focus { box-shadow: 0 0 0 2px var(--cin-red-tint); }
+.view-toggle {
+  display: flex;
+  background: var(--sys-elevated);
+  border-radius: var(--r-pill);
+  box-shadow: var(--sh-sm);
+  overflow: hidden;
+  margin-left: auto;
+}
+.view-btn {
+  border: none;
+  background: none;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--label3);
+  transition: all .15s;
+  line-height: 1;
+}
+.view-btn.active { background: var(--cin-red); color: #fff; }
+.view-btn:first-child { border-radius: var(--r-pill) 0 0 var(--r-pill); }
+.view-btn:last-child  { border-radius: 0 var(--r-pill) var(--r-pill) 0; }
+
+/* ── LIST VIEW ── */
+.media-list { display: flex; flex-direction: column; gap: 8px; }
+.list-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--sys-elevated);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all .15s;
+  box-shadow: var(--sh-sm);
+}
+.list-item:hover { box-shadow: var(--sh-md); transform: translateX(3px); }
+.list-item:active { transform: scale(0.98); }
+.list-thumb {
+  width: 42px; height: 60px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--fill3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.list-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.list-info { flex: 1; min-width: 0; }
+.list-title { font-size: 14px; font-weight: 700; color: var(--label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; letter-spacing: -0.1px; }
+.list-meta { font-size: 11px; color: var(--label3); font-weight: 500; margin-bottom: 4px; }
+.list-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.list-rating { font-size: 15px; font-weight: 800; color: var(--cin-red); }
+.list-plat { font-size: 10px; font-weight: 700; color: var(--label3); text-align: right; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* ── MEDIA GRID ── */
 .media-grid {
   display: grid;
@@ -1056,9 +1138,17 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
       <div class="pending-list" id="recent-list"></div>
     </div>
     <div id="view-watching" class="view"><div class="now-grid" id="watching-grid"></div></div>
-    <div id="view-series" class="view"><div class="filter-bar" id="series-filters"></div><div class="media-grid" id="series-grid"></div></div>
+    <div id="view-series" class="view">
+      <div class="filter-bar" id="series-filters"></div>
+      <div class="view-toolbar" id="series-toolbar"></div>
+      <div id="series-grid"></div>
+    </div>
     <div id="view-pending-series" class="view"><div class="pending-list" id="ps-list"></div></div>
-    <div id="view-movies" class="view"><div class="filter-bar" id="movies-filters"></div><div class="media-grid" id="movies-grid"></div></div>
+    <div id="view-movies" class="view">
+      <div class="filter-bar" id="movies-filters"></div>
+      <div class="view-toolbar" id="movies-toolbar"></div>
+      <div id="movies-grid"></div>
+    </div>
     <div id="view-pending-movies" class="view"><div class="pending-list" id="pm-list"></div></div>
   </div>
 </main>
@@ -1088,6 +1178,10 @@ let S = { series:[], movies:[], view:'dashboard', editId:null, editType:null };
 let _pendingSeasons = [];
 let _activeSeriesFilter = null;
 let _activeMoviesFilter = null;
+let _seriesView = 'grid';   // 'grid' | 'list'
+let _moviesView = 'grid';
+let _seriesSort = 'none';   // 'none' | 'alpha' | 'rating' | 'platform'
+let _moviesSort = 'none';
 
 // ═══════════════════════════════════════════
 //  STORAGE
@@ -1210,8 +1304,55 @@ function renderWatching(){
   id('watching-grid').innerHTML=nw.length?nw.map(s=>nowCardHTML(s)).join(''):'<div class="empty" style="grid-column:1/-1"><div class="empty-ico">▶</div><div class="empty-title">Nada en reproducción</div></div>';
 }
 
+function sortItems(items, sortKey, type){
+  const copy = [...items];
+  if(sortKey==='alpha') return copy.sort((a,b)=>a.title.localeCompare(b.title,'es'));
+  if(sortKey==='rating'){
+    return copy.sort((a,b)=>{
+      const ra=parseFloat(type==='series'?avgRating(a):a.userRating)||0;
+      const rb=parseFloat(type==='series'?avgRating(b):b.userRating)||0;
+      return rb-ra;
+    });
+  }
+  if(sortKey==='platform') return copy.sort((a,b)=>(a.platform||'').localeCompare(b.platform||'','es'));
+  return copy;
+}
+
+function toolbarHTML(viewMode, sortKey, section){
+  return '<select class="sort-select" id="'+section+'-sort">'
+    +'<option value="none"'+(sortKey==='none'?' selected':'')+'>Ordenar...</option>'
+    +'<option value="alpha"'+(sortKey==='alpha'?' selected':'')+'>A → Z</option>'
+    +'<option value="rating"'+(sortKey==='rating'?' selected':'')+'>⭐ Puntuación</option>'
+    +'<option value="platform"'+(sortKey==='platform'?' selected':'')+'>📺 Plataforma</option>'
+    +'</select>'
+    +'<div class="view-toggle">'
+    +'<button class="view-btn'+(viewMode==='grid'?' active':'')+'" data-action="set-view" data-section="'+section+'" data-mode="grid" title="Cuadrícula">⊞</button>'
+    +'<button class="view-btn'+(viewMode==='list'?' active':'')+'" data-action="set-view" data-section="'+section+'" data-mode="list" title="Lista">☰</button>'
+    +'</div>';
+}
+
+function listItemHTML(item, type){
+  const avg = type==='series' ? avgRating(item) : item.userRating;
+  return '<div class="list-item" data-id="'+item.id+'" data-type="'+type+'">'
+    +'<div class="list-thumb">'+posterHTML(item)+'</div>'
+    +'<div class="list-info">'
+    +'<div class="list-title">'+esc(item.title)+'</div>'
+    +'<div class="list-meta">'+(item.startYear||'?')+(item.endYear?'–'+item.endYear:'')+(item.genres&&item.genres.length?' · '+item.genres.slice(0,2).join(', '):'')+'</div>'
+    +statusBadge(item.status)
+    +'</div>'
+    +'<div class="list-right">'
+    +(avg?'<div class="list-rating">★ '+avg+'</div>':'')
+    +'<div class="list-plat">'+esc(item.platform||'')+'</div>'
+    +(item.imdbRating?'<span class="imdb-badge">'+item.imdbRating+'</span>':'')
+    +'</div></div>';
+}
+
 function renderSeriesGrid(q=''){
-  const items=S.series.filter(s=>s.status!=='pending').filter(s=>!q||s.title.toLowerCase().includes(q.toLowerCase())).filter(s=>!_activeSeriesFilter||filterMatch(s,_activeSeriesFilter));
+  let items=S.series.filter(s=>s.status!=='pending')
+    .filter(s=>!q||s.title.toLowerCase().includes(q.toLowerCase()))
+    .filter(s=>!_activeSeriesFilter||filterMatch(s,_activeSeriesFilter));
+  items = sortItems(items, _seriesSort, 'series');
+
   const genres=new Set(),universes=new Set(),platforms=new Set();
   S.series.filter(s=>s.status!=='pending').forEach(s=>{(s.genres||[]).forEach(g=>genres.add(g));(s.universes||[]).forEach(u=>universes.add(u));if(s.platform)platforms.add(s.platform);});
   let chips='';
@@ -1220,11 +1361,28 @@ function renderSeriesGrid(q=''){
   if(platforms.size) chips+='<span class="filter-lbl" style="margin-left:8px">Plataforma:</span>'+[...platforms].map(p=>'<span class="chip'+(matchesFilter(_activeSeriesFilter,'platform',p)?' active':'')+'" data-type="platform" data-val="'+esc(p)+'">'+esc(p)+'</span>').join('');
   chips+=['watching','finished','dropped'].map(s=>'<span class="chip'+(matchesFilter(_activeSeriesFilter,'status',s)?' active':'')+'" data-type="status" data-val="'+s+'">'+(s==='watching'?'▶ Viendo':s==='finished'?'✓ Fin':'✕ Aband.')+'</span>').join('');
   id('series-filters').innerHTML=chips;
-  id('series-grid').innerHTML=items.length?items.map(s=>mediaCardHTML(s,'series')).join(''):'<div class="empty" style="grid-column:1/-1"><div class="empty-ico">◉</div><div class="empty-title">Sin series</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  id('series-toolbar').innerHTML=toolbarHTML(_seriesView, _seriesSort, 'series');
+
+  const empty='<div class="empty" style="grid-column:1/-1"><div class="empty-ico">◉</div><div class="empty-title">Sin series</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  if(_seriesView==='grid'){
+    id('series-grid').className='media-grid';
+    id('series-grid').innerHTML=items.length?items.map(s=>mediaCardHTML(s,'series')).join(''):empty;
+  } else {
+    id('series-grid').className='media-list';
+    id('series-grid').innerHTML=items.length?items.map(s=>listItemHTML(s,'series')).join(''):empty.replace('grid-column:1/-1','');
+  }
+
+  // Attach sort select listener
+  const sel=id('series-sort');
+  if(sel) sel.addEventListener('change',()=>{ _seriesSort=sel.value; renderSeriesGrid(id('search-input')?.value||''); });
 }
 
 function renderMoviesGrid(q=''){
-  const items=S.movies.filter(m=>m.status!=='pending').filter(m=>!q||m.title.toLowerCase().includes(q.toLowerCase())).filter(m=>!_activeMoviesFilter||filterMatch(m,_activeMoviesFilter));
+  let items=S.movies.filter(m=>m.status!=='pending')
+    .filter(m=>!q||m.title.toLowerCase().includes(q.toLowerCase()))
+    .filter(m=>!_activeMoviesFilter||filterMatch(m,_activeMoviesFilter));
+  items = sortItems(items, _moviesSort, 'movies');
+
   const genres=new Set(),universes=new Set(),platforms=new Set();
   S.movies.filter(m=>m.status!=='pending').forEach(m=>{(m.genres||[]).forEach(g=>genres.add(g));(m.universes||[]).forEach(u=>universes.add(u));if(m.platform)platforms.add(m.platform);});
   let chips='';
@@ -1232,7 +1390,19 @@ function renderMoviesGrid(q=''){
   if(universes.size) chips+='<span class="filter-lbl" style="margin-left:8px">Universo:</span>'+[...universes].map(u=>'<span class="chip'+(matchesFilter(_activeMoviesFilter,'universe',u)?' active':'')+'" data-type="universe" data-val="'+esc(u)+'">'+esc(u)+'</span>').join('');
   if(platforms.size) chips+='<span class="filter-lbl" style="margin-left:8px">Plataforma:</span>'+[...platforms].map(p=>'<span class="chip'+(matchesFilter(_activeMoviesFilter,'platform',p)?' active':'')+'" data-type="platform" data-val="'+esc(p)+'">'+esc(p)+'</span>').join('');
   id('movies-filters').innerHTML=chips;
-  id('movies-grid').innerHTML=items.length?items.map(m=>mediaCardHTML(m,'movies')).join(''):'<div class="empty" style="grid-column:1/-1"><div class="empty-ico">◈</div><div class="empty-title">Sin películas</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  id('movies-toolbar').innerHTML=toolbarHTML(_moviesView, _moviesSort, 'movies');
+
+  const empty='<div class="empty" style="grid-column:1/-1"><div class="empty-ico">◈</div><div class="empty-title">Sin películas</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  if(_moviesView==='grid'){
+    id('movies-grid').className='media-grid';
+    id('movies-grid').innerHTML=items.length?items.map(m=>mediaCardHTML(m,'movies')).join(''):empty;
+  } else {
+    id('movies-grid').className='media-list';
+    id('movies-grid').innerHTML=items.length?items.map(m=>listItemHTML(m,'movies')).join(''):empty.replace('grid-column:1/-1','');
+  }
+
+  const sel=id('movies-sort');
+  if(sel) sel.addEventListener('change',()=>{ _moviesSort=sel.value; renderMoviesGrid(id('search-input')?.value||''); });
 }
 
 function renderPendingList(type){
@@ -1833,7 +2003,7 @@ document.addEventListener('click', function(e){
   }
 
   // Cards — check first before data-action to avoid missing clicks
-  const card=e.target.closest('.media-card,.now-card,.pend-item');
+  const card=e.target.closest('.media-card,.now-card,.pend-item,.list-item');
   if(card && card.dataset.id && !e.target.closest('[data-action]')){
     openDetail(card.dataset.id, card.dataset.type); return;
   }
@@ -1979,6 +2149,15 @@ document.addEventListener('click',function(e){
   tab.classList.add('active');
   const pane=container.querySelector('#'+tab.dataset.tab);
   if(pane) pane.classList.add('active');
+});
+
+// View toggle (grid/list) and sort handled via data-action
+document.addEventListener('click',function(e){
+  const btn=e.target.closest('[data-action="set-view"]');
+  if(!btn) return;
+  const section=btn.dataset.section, mode=btn.dataset.mode;
+  if(section==='series'){ _seriesView=mode; renderSeriesGrid(id('search-input')?.value||''); }
+  else if(section==='movies'){ _moviesView=mode; renderMoviesGrid(id('search-input')?.value||''); }
 });
 
 // Filter chips
