@@ -1823,6 +1823,7 @@ document.addEventListener('click', function(e){
   if(e.target.id==='modal-x'){ closeModal(); return; }
 
   // Add button
+  if(e.target.id==='btn-add'){ openAddModal(); return; }
   if(e.target.id==='btn-refresh'){
     const btn = e.target;
     btn.style.transition = 'transform 0.5s ease';
