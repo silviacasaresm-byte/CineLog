@@ -101,11 +101,12 @@ body {
   background: var(--sys-bg);
   color: var(--label);
   margin: 0;
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   background-image: radial-gradient(ellipse at 20% 0%, rgba(181,64,64,0.05) 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(192,138,48,0.05) 0%, transparent 60%);
 }
 
-html { margin: 0; }
+html { margin: 0; overscroll-behavior-y: none; }
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -960,6 +961,25 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   transition:background .15s;
 }
 #hamburger:hover { background:var(--fill1); }
+
+#btn-refresh {
+  width: 34px;
+  height: 34px;
+  background: var(--fill2);
+  border: none;
+  border-radius: 50%;
+  color: var(--label3);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+#btn-refresh:hover { background: var(--fill1); color: var(--cin-red); }
+#btn-refresh:active { transform: rotate(180deg); }
 #sidebar-overlay {
   position:fixed; inset:0;
   background:rgba(30,24,16,0.45);
@@ -1025,6 +1045,7 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
     <div class="topbar-title" id="topbar-title">Dashboard</div>
     <div class="search-wrap"><span>🔍</span><input type="text" id="search-input" placeholder="Buscar..."></div>
     <button class="btn btn-primary" id="btn-add" style="display:none">+ Añadir</button>
+    <button id="btn-refresh" title="Actualizar">↻</button>
   </div>
   <div id="content">
     <div id="view-dashboard" class="view active">
@@ -1802,7 +1823,13 @@ document.addEventListener('click', function(e){
   if(e.target.id==='modal-x'){ closeModal(); return; }
 
   // Add button
-  if(e.target.id==='btn-add'){ openAddModal(); return; }
+  if(e.target.id==='btn-refresh'){
+    const btn = e.target;
+    btn.style.transition = 'transform 0.5s ease';
+    btn.style.transform = 'rotate(360deg)';
+    setTimeout(()=>{ btn.style.transition = ''; btn.style.transform = ''; }, 500);
+    load(); updateBadges(); renderView(); return;
+  }
 
   // Cards — check first before data-action to avoid missing clicks
   const card=e.target.closest('.media-card,.now-card,.pend-item');
