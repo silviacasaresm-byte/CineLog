@@ -1179,6 +1179,7 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 // ═══════════════════════════════════════════
 let S = { series:[], movies:[], view:'dashboard', editId:null, editType:null };
 let _pendingSeasons = [];
+let _pendingQuotes = [];
 let _activeSeriesFilter = null;
 let _activeMoviesFilter = null;
 let _seriesView = 'grid';   // 'grid' | 'list'
@@ -1708,6 +1709,7 @@ function closeModal(){id('modal-overlay').classList.remove('open')}
 
 function openAddModal(){
   _pendingSeasons=[];
+  _pendingQuotes=[];
   const type=S.view==='movies'||S.view==='pending-movies'?'movies':'series';
   S.editId=null; S.editType=type;
   id('modal-foot').innerHTML='';
@@ -1807,11 +1809,25 @@ function saveItem(){
   item.awards=(id('f-awards')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
   if(!existing){
     item.seasons=(_pendingSeasons.length>0&&type==='series')?_pendingSeasons:[];
-    item.comments=[]; item.quotes=[]; item.createdAt=Date.now();
+    item.comments=[]; 
+    item.quotes=(type==='movies'&&_pendingQuotes.length>0)?[..._pendingQuotes]:[];
+    item.createdAt=Date.now();
   } else if(type==='series'&&_pendingSeasons.length>0){
     item.seasons=_pendingSeasons;
   }
   _pendingSeasons=[];
+  _pendingQuotes=[];
+
+  // If series marked as finished, auto-mark all episodes as watched
+  if(type==='series' && item.status==='finished' && item.seasons){
+    item.seasons.forEach(t=>{
+      (t.episodes||[]).forEach(ep=>{
+        ep.watched=true;
+        ep.current=false;
+      });
+    });
+  }
+
   if(isEdit){ const idx=arr.findIndex(i=>i.id===itemId); arr[idx]=item; }
   else arr.push(item);
   save(); closeModal(); renderView();
@@ -1993,7 +2009,10 @@ async function tmdbFill(tmdbId, mediaType){
 
     if(mediaType==='movie'){
       _pendingSeasons=[];
-      el.innerHTML='<div class="tmdb-ok">✅ <strong>'+esc(title)+'</strong> cargada</div>'+provHTML;
+      el.innerHTML='<div class="tmdb-ok">✅ <strong>'+esc(title)+'</strong> cargada</div>'+provHTML
+        +'<div id="quotes-loading" style="margin-top:8px;font-size:11px;color:var(--label3);font-weight:700">💬 Buscando frases célebres...</div>';
+      // Fetch quotes via Claude API
+      fetchMovieQuotes(title, year);
       return;
     }
 
@@ -2022,6 +2041,48 @@ async function tmdbFill(tmdbId, mediaType){
     const epCount=_pendingSeasons.reduce((a,s)=>a+s.episodes.length,0);
     el.innerHTML='<div class="tmdb-ok">✅ <strong>'+esc(title)+'</strong> — '+_pendingSeasons.length+' temporadas · '+epCount+' episodios · Pulsa Guardar</div>'+provHTML;
   }catch(e){ el.innerHTML='<div class="tmdb-status">⚠️ Error al cargar.</div>'; }
+}
+
+// ── Movie quotes via Claude API ──
+async function fetchMovieQuotes(title, year){
+  const quotesLoadingEl = id('quotes-loading');
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages:[{
+          role: 'user',
+          content: `Dame exactamente 3 frases célebres e icónicas de la película "${title}"${year?' ('+year+')':''}.
+Responde SOLO con JSON válido, sin markdown, sin explicación:
+{"quotes":["frase 1","frase 2","frase 3"]}
+Si no conoces la película o no tiene frases famosas, responde: {"quotes":[]}`
+        }]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content||[]).map(c=>c.text||'').join('');
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    const quotes = parsed.quotes||[];
+
+    if(quotes.length > 0){
+      // Fill the quotes textarea or populate _pendingQuotes
+      window._pendingQuotes = quotes;
+      if(quotesLoadingEl){
+        quotesLoadingEl.innerHTML = '💬 <strong>'+quotes.length+' frases</strong> encontradas — se añadirán al guardar:<br>'
+          + quotes.map(q=>'<span style="display:block;font-style:italic;color:var(--label3);font-size:11px;margin-top:3px">«'+esc(q)+'»</span>').join('');
+      }
+    } else {
+      window._pendingQuotes = [];
+      if(quotesLoadingEl) quotesLoadingEl.textContent = '💬 No se encontraron frases — puedes añadirlas manualmente';
+    }
+  } catch(e){
+    window._pendingQuotes = [];
+    if(quotesLoadingEl) quotesLoadingEl.textContent = '';
+  }
 }
 
 // Parse OMDb awards string into clean array
