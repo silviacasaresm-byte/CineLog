@@ -2666,70 +2666,68 @@ id('search-input').addEventListener('input',function(){
 // ── Export / Import ──
 async function exportData(){
   const data = { series: S.series, movies: S.movies, exportedAt: new Date().toISOString(), version: 1 };
-  const json = JSON.stringify(data, null, 2);
+  const json = JSON.stringify(data);
+  const jsonPretty = JSON.stringify(data, null, 2);
   const filename = 'cinelog-backup-'+new Date().toISOString().slice(0,10)+'.json';
 
-  // Option 1: File System Access API (Android Chrome 86+)
-  if(window.showSaveFilePicker){
-    try{
-      const handle = await window.showSaveFilePicker({
-        suggestedName: filename,
-        types:[{description:'JSON Backup',accept:{'application/json':['.json']}}]
-      });
-      const writable = await handle.createWritable();
-      await writable.write(json);
-      await writable.close();
-      return;
-    }catch(e){
-      if(e.name==='AbortError') return; // user cancelled
-    }
-  }
-
-  // Option 2: Open in new tab — user can save from Chrome's menu
-  try{
-    const blob = new Blob([json],{type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url,'_blank');
-    if(win){
-      setTimeout(()=>URL.revokeObjectURL(url), 60000);
-      return;
-    }
-  }catch(e){}
-
-  // Option 3: data: URI in new tab
-  try{
-    const uri = 'data:application/json;charset=utf-8,'+encodeURIComponent(json);
-    const win = window.open(uri,'_blank');
-    if(win) return;
-  }catch(e){}
-
-  // Option 4: last resort — show modal with share button
-  exportShowModal(json, filename);
-}
-
-function exportShowModal(json, filename){
   id('modal-foot').innerHTML='';
   openModal('⬇ Exportar backup',
-    '<div style="background:var(--fill3);border-radius:var(--r-md);padding:12px;margin-bottom:12px">'
+    '<div style="background:var(--fill3);border-radius:var(--r-md);padding:12px;margin-bottom:14px;display:flex;gap:16px;align-items:center">'
+    +'<div>'
     +'<div style="font-size:13px;font-weight:800">📺 '+S.series.length+' series · 🎬 '+S.movies.length+' películas</div>'
-    +'<div style="font-size:11px;color:var(--label3);margin-top:2px">'+Math.round(json.length/1024)+' KB</div>'
+    +'<div style="font-size:11px;color:var(--label3);margin-top:2px">'+Math.round(jsonPretty.length/1024)+' KB · '+filename+'</div>'
+    +'</div></div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px" id="export-options">'
+    +'<button class="btn btn-primary" id="exp-clipboard" style="justify-content:flex-start;gap:10px;padding:12px 16px">📋 <span><strong>Copiar al portapapeles</strong><br><small style="font-weight:500;opacity:.7">Pega en Keep, Notas, Drive...</small></span></button>'
+    +'<button class="btn btn-secondary" id="exp-email" style="justify-content:flex-start;gap:10px;padding:12px 16px">✉️ <span><strong>Enviármelo por email</strong><br><small style="font-weight:500;opacity:.7">Abre Gmail con el backup</small></span></button>'
+    +'<button class="btn btn-secondary" id="exp-share" style="justify-content:flex-start;gap:10px;padding:12px 16px">📤 <span><strong>Compartir</strong><br><small style="font-weight:500;opacity:.7">WhatsApp, Drive, Telegram...</small></span></button>'
     +'</div>'
-    +'<p style="font-size:13px;color:var(--label3);margin-bottom:10px">Mantén pulsado el texto y elige <strong>Seleccionar todo → Compartir</strong> para guardarlo en Drive o enviártelo.</p>'
-    +'<textarea id="export-json" style="width:100%;height:160px;font-family:monospace;font-size:8px;'
-    +'border:1px solid var(--sep-opaque);border-radius:var(--r-md);padding:8px;'
-    +'background:var(--fill3);color:var(--label);resize:none;-webkit-user-select:all;user-select:all" '
-    +'readonly onclick="this.select();this.setSelectionRange(0,999999)">'+escAttr(json)+'</textarea>'
+    +'<div id="exp-msg" style="margin-top:10px;font-size:12px;font-weight:700;min-height:20px"></div>'
   );
-  if(navigator.share){
-    const shareBtn=document.createElement('button');
-    shareBtn.className='btn btn-primary'; shareBtn.textContent='📤 Compartir';
-    shareBtn.addEventListener('click',()=>navigator.share({title:filename,text:json}).catch(()=>{}));
-    id('modal-foot').appendChild(shareBtn);
-  }
+
   const closeBtn=document.createElement('button');
   closeBtn.className='btn btn-secondary'; closeBtn.textContent='Cerrar';
   closeBtn.addEventListener('click',closeModal);
   id('modal-foot').appendChild(closeBtn);
+
+  // Option 1: Clipboard
+  id('exp-clipboard').addEventListener('click', async ()=>{
+    try{
+      await navigator.clipboard.writeText(jsonPretty);
+      id('exp-msg').innerHTML='<span style="color:var(--cin-green)">✅ Copiado. Pégalo en Google Keep, en un email o en un archivo de texto.</span>';
+    }catch(e){
+      // Fallback: select textarea
+      id('exp-msg').innerHTML='';
+      const ta=document.createElement('textarea');
+      ta.value=jsonPretty; ta.style.cssText='width:100%;height:100px;font-size:8px;font-family:monospace;border:1px solid var(--sep-opaque);border-radius:8px;padding:6px;-webkit-user-select:all;user-select:all';
+      ta.readOnly=true; ta.onclick=function(){ this.select(); this.setSelectionRange(0,999999); };
+      id('exp-msg').appendChild(ta);
+      setTimeout(()=>{ ta.focus(); ta.select(); ta.setSelectionRange(0,999999); },50);
+    }
+  });
+
+  // Option 2: Email
+  id('exp-email').addEventListener('click',()=>{
+    const subject = encodeURIComponent('CineLog Backup '+new Date().toISOString().slice(0,10));
+    const body = encodeURIComponent('Guarda este backup de CineLog:\n\n'+jsonPretty);
+    // mailto has URL length limits — if too big, warn
+    if(body.length > 8000){
+      id('exp-msg').innerHTML='<span style="color:var(--cin-amber)">⚠️ Backup demasiado grande para email. Usa Copiar o Compartir.</span>';
+      return;
+    }
+    window.location.href='mailto:?subject='+subject+'&body='+body;
+  });
+
+  // Option 3: Web Share
+  id('exp-share').addEventListener('click',()=>{
+    if(navigator.share){
+      navigator.share({ title: filename, text: jsonPretty })
+        .then(()=>{ id('exp-msg').innerHTML='<span style="color:var(--cin-green)">✅ Compartido.</span>'; })
+        .catch(()=>{});
+    } else {
+      id('exp-msg').innerHTML='<span style="color:var(--label3)">Tu navegador no soporta compartir. Usa Copiar.</span>';
+    }
+  });
 }
 
 id('btn-import').addEventListener('change', function(){
