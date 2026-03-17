@@ -2692,18 +2692,12 @@ function exportFallback(json, filename){
   copyBtn.className='btn btn-primary'; copyBtn.textContent='📋 Copiar todo';
   copyBtn.addEventListener('click',()=>{
     const ta = id('export-json');
-    ta.select(); ta.setSelectionRange(0,99999);
-    try{
-      navigator.clipboard.writeText(json).then(()=>{
-        id('export-copy-msg').textContent='✅ Copiado al portapapeles';
-      }).catch(()=>{
-        document.execCommand('copy');
-        id('export-copy-msg').textContent='✅ Copiado';
-      });
-    }catch(e){
-      document.execCommand('copy');
-      id('export-copy-msg').textContent='✅ Copiado';
-    }
+    ta.focus(); ta.select(); ta.setSelectionRange(0, 99999);
+    let copied = false;
+    try { copied = document.execCommand('copy'); } catch(e){}
+    id('export-copy-msg').textContent = copied
+      ? '✅ Copiado al portapapeles'
+      : '👆 Selecciona todo el texto arriba y cópialo manualmente';
   });
   const closeBtn = document.createElement('button');
   closeBtn.className='btn btn-secondary'; closeBtn.textContent='Cerrar';
