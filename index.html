@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="CineLog">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#3A8EF6">
+<meta name="theme-color" content="#B54040">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
@@ -17,67 +17,83 @@
 <style>
 /* ── iOS SYSTEM TOKENS ── */
 :root {
-  /* Backgrounds */
-  --sys-bg:          #F2F2F7;
-  --sys-bg2:         #FFFFFF;
-  --sys-bg3:         #F2F2F7;
-  --sys-grouped:     #EFEFF4;
-  --sys-elevated:    #FFFFFF;
+  /* ── Cinema backgrounds (warm cream, like ticket paper) ── */
+  --sys-bg:          #F5F0E8;
+  --sys-bg2:         #FDFAF5;
+  --sys-bg3:         #EDE8DE;
+  --sys-grouped:     #E8E2D8;
+  --sys-elevated:    #FDFAF5;
 
-  /* iOS Pastel System Colors (vivid pastels, not washed out) */
-  --ios-blue:        #3A8EF6;
-  --ios-blue-bg:     #EAF2FF;
-  --ios-blue-tint:   rgba(58,142,246,0.12);
-  --ios-teal:        #2DC3C9;
-  --ios-teal-bg:     #E5F8F9;
-  --ios-green:       #30BF6E;
-  --ios-green-bg:    #E4F8ED;
-  --ios-green-tint:  rgba(48,191,110,0.12);
-  --ios-orange:      #FF8C42;
-  --ios-orange-bg:   #FFF0E6;
-  --ios-pink:        #F0628A;
-  --ios-pink-bg:     #FDEDF2;
-  --ios-pink-tint:   rgba(240,98,138,0.12);
-  --ios-purple:      #9B72E8;
-  --ios-purple-bg:   #F2ECFD;
-  --ios-indigo:      #6E76E5;
-  --ios-yellow:      #F5A623;
-  --ios-yellow-bg:   #FFF7E6;
+  /* ── Cinema palette ── */
+  /* Popcorn red — muted, warm */
+  --cin-red:         #B54040;
+  --cin-red-bg:      #F8ECEC;
+  --cin-red-tint:    rgba(181,64,64,0.10);
 
-  /* Accent (main interactive color) */
-  --acc:             #3A8EF6;
-  --acc-dark:        #1A6FD4;
+  /* Butter gold — popcorn/projector beam */
+  --cin-gold:        #C08A30;
+  --cin-gold-bg:     #FBF3E3;
+  --cin-gold-tint:   rgba(192,138,48,0.12);
 
-  /* Text */
-  --label:           #1C1C1E;
-  --label2:          #3C3C43;
-  --label3:          rgba(60,60,67,0.6);
-  --label4:          rgba(60,60,67,0.3);
-  --placeholder:     rgba(60,60,67,0.3);
+  /* Sage green — cinema EXIT sign */
+  --cin-green:       #4A8A60;
+  --cin-green-bg:    #EBF5EF;
+  --cin-green-tint:  rgba(74,138,96,0.12);
 
-  /* Fills */
-  --fill1:           rgba(120,120,128,0.2);
-  --fill2:           rgba(120,120,128,0.14);
-  --fill3:           rgba(120,120,128,0.08);
+  /* Amber — film reel/projector warm light */
+  --cin-amber:       #C07030;
+  --cin-amber-bg:    #FAF0E6;
 
-  /* Separators */
-  --sep:             rgba(60,60,67,0.12);
-  --sep-opaque:      #C6C6C8;
+  /* Dusty rose — vintage movie poster */
+  --cin-rose:        #A85060;
+  --cin-rose-bg:     #F8ECEE;
+  --cin-rose-tint:   rgba(168,80,96,0.10);
 
-  /* Radii */
+  /* Slate purple — film noir shadow */
+  --cin-purple:      #7060A0;
+  --cin-purple-bg:   #F0EBF8;
+
+  /* Sepia indigo — old reel */
+  --cin-indigo:      #506090;
+  --cin-indigo-bg:   #EBF0F8;
+
+  /* Clapperboard dark */
+  --cin-dark:        #2A2018;
+  --cin-dark-bg:     #E8E2D8;
+
+  /* Accent = popcorn red */
+  --acc:             #B54040;
+  --acc-dark:        #8A2A2A;
+
+  /* ── Text (warm, not cold iOS grey) ── */
+  --label:           #1E1810;
+  --label2:          #3D3028;
+  --label3:          rgba(61,48,40,0.55);
+  --label4:          rgba(61,48,40,0.28);
+  --placeholder:     rgba(61,48,40,0.30);
+
+  /* ── Fills (warm toned) ── */
+  --fill1:           rgba(90,70,50,0.18);
+  --fill2:           rgba(90,70,50,0.10);
+  --fill3:           rgba(90,70,50,0.05);
+
+  /* ── Separators ── */
+  --sep:             rgba(61,48,40,0.10);
+  --sep-opaque:      #C8BFB0;
+
+  /* ── Radii ── */
   --r-sm:    10px;
   --r-md:    13px;
   --r-lg:    16px;
   --r-xl:    22px;
   --r-pill:  100px;
 
-  /* Shadows */
-  --sh-sm:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --sh-md:   0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
-  --sh-lg:   0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
-  --sh-panel:0 -2px 30px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06);
+  /* ── Shadows (warm toned) ── */
+  --sh-sm:   0 1px 3px rgba(30,24,16,0.08), 0 1px 2px rgba(30,24,16,0.04);
+  --sh-md:   0 4px 16px rgba(30,24,16,0.09), 0 1px 4px rgba(30,24,16,0.05);
+  --sh-lg:   0 12px 40px rgba(30,24,16,0.12), 0 4px 12px rgba(30,24,16,0.06);
+  --sh-panel:0 -2px 30px rgba(30,24,16,0.10), 0 0 0 0.5px rgba(30,24,16,0.06);
 }
-
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 
 body {
@@ -87,12 +103,13 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(ellipse at 20% 0%, rgba(181,64,64,0.05) 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(192,138,48,0.05) 0%, transparent 60%);
 }
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--sep-opaque); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: var(--cin-red); opacity:0.4; border-radius: 10px; }
 
 /* ── LAYOUT ── */
 #app { display: flex; min-height: 100vh; }
@@ -121,7 +138,7 @@ body {
 .logo-title {
   font-size: 22px;
   font-weight: 800;
-  color: var(--ios-blue);
+  color: var(--cin-red);
   letter-spacing: -0.5px;
 }
 .logo-sub {
@@ -159,7 +176,7 @@ nav { padding: 8px 0 12px; flex: 1; }
 }
 .nav-item:hover { background: var(--fill2); }
 .nav-item.active {
-  background: var(--ios-blue);
+  background: var(--cin-red);
   color: #fff;
   font-weight: 700;
   box-shadow: var(--sh-sm);
@@ -180,17 +197,17 @@ nav { padding: 8px 0 12px; flex: 1; }
   background: rgba(255,255,255,0.25);
 }
 /* Nav section icon colors */
-.nav-item:nth-of-type(1) .ico { background:var(--ios-blue-tint); color:var(--ios-blue); }
-.nav-item:nth-of-type(2) .ico { background:var(--ios-green-tint); color:var(--ios-green); }
-.nav-item:nth-of-type(3) .ico { background:var(--ios-teal-bg); color:var(--ios-teal); }
-.nav-item:nth-of-type(4) .ico { background:var(--ios-orange-bg); color:var(--ios-orange); }
-.nav-item:nth-of-type(5) .ico { background:var(--ios-pink-bg); color:var(--ios-pink); }
-.nav-item:nth-of-type(6) .ico { background:var(--ios-purple-bg); color:var(--ios-purple); }
+.nav-item:nth-of-type(1) .ico { background:var(--cin-red-tint); color:var(--cin-red); }
+.nav-item:nth-of-type(2) .ico { background:var(--cin-green-tint); color:var(--cin-green); }
+.nav-item:nth-of-type(3) .ico { background:var(--cin-gold-bg); color:var(--cin-gold); }
+.nav-item:nth-of-type(4) .ico { background:var(--cin-amber-bg); color:var(--cin-amber); }
+.nav-item:nth-of-type(5) .ico { background:var(--cin-rose-bg); color:var(--cin-rose); }
+.nav-item:nth-of-type(6) .ico { background:var(--cin-purple-bg); color:var(--cin-purple); }
 
 .nav-badge {
   margin-left: auto;
-  background: var(--ios-blue-tint);
-  color: var(--ios-blue);
+  background: var(--cin-red-tint);
+  color: var(--cin-red);
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
@@ -218,8 +235,8 @@ nav { padding: 8px 0 12px; flex: 1; }
   padding: 4px 0;
 }
 .stat-row b {
-  background: var(--ios-blue-tint);
-  color: var(--ios-blue);
+  background: var(--cin-red-tint);
+  color: var(--cin-red);
   padding: 1px 8px;
   border-radius: var(--r-pill);
   font-size: 11px;
@@ -251,7 +268,7 @@ nav { padding: 8px 0 12px; flex: 1; }
   flex: 1;
   letter-spacing: -0.2px;
 }
-.topbar-title span { color: var(--ios-blue); }
+.topbar-title span { color: var(--cin-red); }
 
 /* ── SEARCH BAR (iOS style) ── */
 .search-wrap {
@@ -295,7 +312,7 @@ nav { padding: 8px 0 12px; flex: 1; }
 }
 .btn:active { transform: scale(0.96); opacity: 0.85; }
 .btn-primary {
-  background: var(--ios-blue);
+  background: var(--cin-red);
   color: #fff;
   box-shadow: 0 2px 8px rgba(58,142,246,0.35);
 }
@@ -352,58 +369,68 @@ nav { padding: 8px 0 12px; flex: 1; }
   margin-bottom: 4px;
   letter-spacing: -0.5px;
 }
-.dash-title span { color: var(--ios-blue); }
+.dash-title span { color: var(--cin-red); }
 .dash-sub { color: var(--label3); font-size: 14px; font-weight: 500; }
 
 /* ── STATS ── */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
   margin-bottom: 22px;
 }
 .stat-card {
   background: var(--sys-elevated);
-  border-radius: var(--r-lg);
-  padding: 15px 14px;
+  border-radius: var(--r-md);
   box-shadow: var(--sh-sm);
   transition: transform 0.15s, box-shadow 0.15s;
   animation: iosPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  aspect-ratio: 1 / 1;
+  padding: 6px 4px;
 }
 .stat-card:nth-child(2){animation-delay:.06s}
 .stat-card:nth-child(3){animation-delay:.12s}
 .stat-card:nth-child(4){animation-delay:.18s}
 .stat-card:nth-child(5){animation-delay:.24s}
-.stat-card:active { transform: scale(0.97); }
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
+.stat-card:active { transform: scale(0.93); }
 @keyframes iosPop {
   from { opacity:0; transform:scale(0.85) translateY(6px); }
   to { opacity:1; transform:scale(1) translateY(0); }
 }
 .stat-icon {
-  width: 34px; height: 34px;
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 17px;
-  margin-bottom: 10px;
+  font-size: 20px;
+  line-height: 1;
 }
-.stat-card:nth-child(1) .stat-icon { background:var(--ios-blue-bg); }
-.stat-card:nth-child(2) .stat-icon { background:var(--ios-teal-bg); }
-.stat-card:nth-child(3) .stat-icon { background:var(--ios-green-bg); }
-.stat-card:nth-child(4) .stat-icon { background:var(--ios-orange-bg); }
-.stat-card:nth-child(5) .stat-icon { background:var(--ios-pink-bg); }
+.stat-card:nth-child(1) .stat-icon { filter: none; }
+.stat-card:nth-child(2) .stat-icon { filter: none; }
+.stat-card:nth-child(3) .stat-icon { filter: none; }
+.stat-card:nth-child(4) .stat-icon { filter: none; }
+.stat-card:nth-child(5) .stat-icon { filter: none; }
 .stat-val {
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--label);
   line-height: 1;
-  margin-bottom: 2px;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
 }
 .stat-lbl {
-  font-size: 11px;
+  font-size: 9px;
   color: var(--label3);
-  font-weight: 600;
-  letter-spacing: 0.2px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 /* ── SECTION TITLE ── */
@@ -447,7 +474,7 @@ nav { padding: 8px 0 12px; flex: 1; }
 .now-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
 .now-meta { font-size: 11px; color: var(--label3); margin-bottom: 8px; font-weight: 500; }
 .prog-bar { height: 4px; background: var(--fill2); border-radius: 4px; overflow: hidden; margin-bottom: 5px; }
-.prog-fill { height: 100%; background: linear-gradient(90deg, var(--ios-blue), var(--ios-teal)); border-radius: 4px; transition: width 0.4s ease; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, var(--cin-red), var(--cin-gold)); border-radius: 4px; transition: width 0.4s ease; }
 .now-ep { font-size: 11px; color: var(--label3); font-weight: 600; }
 
 /* ── FILTER BAR ── */
@@ -468,7 +495,7 @@ nav { padding: 8px 0 12px; flex: 1; }
 .chip:hover { background: var(--fill2); }
 .chip:active { transform: scale(0.96); }
 .chip.active {
-  background: var(--ios-blue);
+  background: var(--cin-red);
   color: #fff;
   box-shadow: 0 2px 8px rgba(58,142,246,0.30);
 }
@@ -519,14 +546,14 @@ nav { padding: 8px 0 12px; flex: 1; }
 .card-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; line-height: 1.3; color: var(--label); letter-spacing: -0.1px; }
 .card-year { font-size: 11px; color: var(--label3); margin-bottom: 5px; font-weight: 500; }
 .card-rating { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--label2); }
-.star-ico { color: var(--ios-yellow); }
+.star-ico { color: var(--cin-gold); }
 .imdb-badge { display:inline-flex; align-items:center; background:#F5C518; color:#000; font-size:10px; font-weight:800; padding:2px 6px; border-radius:5px; margin-left:3px; }
 
 /* ── STATUS BADGES ── */
 .badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:var(--r-pill); font-size:10px; font-weight:700; letter-spacing:0.2px; }
-.badge-watching { background:var(--ios-green-bg); color:#1A8A4A; }
-.badge-pending  { background:var(--ios-blue-bg);  color:var(--ios-blue); }
-.badge-finished { background:var(--ios-teal-bg);  color:#1A9299; }
+.badge-watching { background:var(--cin-green-bg); color:#1A8A4A; }
+.badge-pending  { background:var(--cin-red-bg);  color:var(--cin-red); }
+.badge-finished { background:var(--cin-gold-bg);  color:#1A9299; }
 .badge-dropped  { background:rgba(255,59,48,.10); color:#FF3B30; }
 .media-card .badge { position:absolute; top:8px; left:8px; z-index:2; backdrop-filter:blur(8px); background:rgba(255,255,255,0.88); color:var(--label2); font-size:9px; padding:3px 8px; box-shadow:0 1px 4px rgba(0,0,0,.10); }
 .media-card .badge-watching { color: #1A8A4A; }
@@ -540,8 +567,8 @@ nav { padding: 8px 0 12px; flex: 1; }
 .plat-Amazon   { background:rgba(0,168,225,.10);  color:#0077AA; }
 .plat-Disney   { background:rgba(17,60,207,.10);  color:#113CCF; }
 .plat-Apple    { background:var(--fill2);          color:var(--label2); }
-.plat-Descarga { background:var(--ios-green-bg);  color:#1A8A4A; }
-.plat-TV       { background:var(--ios-orange-bg); color:#B85500; }
+.plat-Descarga { background:var(--cin-green-bg);  color:#1A8A4A; }
+.plat-TV       { background:var(--cin-amber-bg); color:#B85500; }
 .plat-otro     { background:var(--fill2);          color:var(--label3); }
 
 /* ── DETAIL PANEL ── (iOS Sheet) */
@@ -605,7 +632,7 @@ nav { padding: 8px 0 12px; flex: 1; }
 .det-ratings { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .rat-block { display:flex; align-items:center; gap:5px; }
 .rat-lbl { font-size:10px; color:var(--label3); font-weight:700; text-transform:uppercase; letter-spacing:0.8px; }
-.rat-val { font-size:18px; color:var(--ios-blue); font-weight:800; letter-spacing:-0.3px; }
+.rat-val { font-size:18px; color:var(--cin-red); font-weight:800; letter-spacing:-0.3px; }
 .det-body { padding:18px 22px; }
 .det-actions { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
 
@@ -629,7 +656,7 @@ nav { padding: 8px 0 12px; flex: 1; }
   letter-spacing:-0.1px;
 }
 .tab:hover { color:var(--label2); }
-.tab.active { color:var(--ios-blue); border-bottom-color:var(--ios-blue); font-weight:700; }
+.tab.active { color:var(--cin-red); border-bottom-color:var(--cin-red); font-weight:700; }
 .tab-pane { display:none; }
 .tab-pane.active { display:block; }
 
@@ -654,28 +681,28 @@ nav { padding: 8px 0 12px; flex: 1; }
 .season-head:active { background:var(--fill3); }
 .season-hl { flex:1; }
 .s-title { font-size:14px; font-weight:700; margin-bottom:1px; color:var(--label); letter-spacing:-0.2px; }
-.s-desc-toggle { font-size:11px; color:var(--ios-blue); font-weight:600; cursor:pointer; list-style:none; display:inline-flex; align-items:center; gap:3px; }
+.s-desc-toggle { font-size:11px; color:var(--cin-red); font-weight:600; cursor:pointer; list-style:none; display:inline-flex; align-items:center; gap:3px; }
 .s-desc-toggle::-webkit-details-marker { display:none; }
 .s-desc-toggle::before { content:'▶'; font-size:8px; transition:transform .2s; display:inline-block; }
 details[open] .s-desc-toggle::before { transform:rotate(90deg); }
 .s-details .s-desc { font-size:12px; color:var(--label3); font-weight:500; margin-top:4px; padding:7px 10px; background:var(--fill3); border-radius:var(--r-sm); line-height:1.5; }
 .ep-details .ep-desc { font-size:12px; color:var(--label3); line-height:1.5; font-weight:500; margin-top:4px; padding:6px 9px; background:var(--fill3); border-radius:var(--r-sm); }
-.ep-desc-toggle { font-size:11px; color:var(--ios-blue); font-weight:600; cursor:pointer; list-style:none; display:inline-flex; align-items:center; gap:3px; }
+.ep-desc-toggle { font-size:11px; color:var(--cin-red); font-weight:600; cursor:pointer; list-style:none; display:inline-flex; align-items:center; gap:3px; }
 .ep-desc-toggle::-webkit-details-marker { display:none; }
 .ep-desc-toggle::before { content:'▶'; font-size:8px; transition:transform .2s; display:inline-block; }
 details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 .s-stats { font-size:11px; color:var(--label3); font-weight:500; margin-top:2px; }
-.s-avg { font-size:15px; font-weight:800; color:var(--ios-blue); letter-spacing:-0.3px; }
+.s-avg { font-size:15px; font-weight:800; color:var(--cin-red); letter-spacing:-0.3px; }
 .s-chevron { transition:transform .25s; color:var(--label4); font-size:12px; margin-left:2px; }
 .season-acc.open .s-chevron { transform:rotate(180deg); }
 .season-body { display:none; border-top:1px solid var(--sep); }
 .season-acc.open .season-body { display:block; }
 .season-rating-input {
   width:46px; padding:4px 6px; font-size:13px; font-weight:700; text-align:center;
-  color:var(--ios-blue); background:var(--ios-blue-bg); border:none; border-radius:var(--r-sm);
+  color:var(--cin-red); background:var(--cin-red-bg); border:none; border-radius:var(--r-sm);
   outline:none; font-family:inherit;
 }
-.season-rating-input:focus { box-shadow:0 0 0 2px var(--ios-blue); }
+.season-rating-input:focus { box-shadow:0 0 0 2px var(--cin-red); }
 
 /* ── EPISODES ── */
 .ep-row {
@@ -699,18 +726,18 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   font-weight:700;
 }
 .ep-check:active { transform:scale(0.88); }
-.ep-check.done { border-color:var(--ios-green); background:var(--ios-green); color:#fff; }
-.ep-check.cur { border-color:var(--ios-blue); background:var(--ios-blue-bg); color:var(--ios-blue); }
+.ep-check.done { border-color:var(--cin-green); background:var(--cin-green); color:#fff; }
+.ep-check.cur { border-color:var(--cin-red); background:var(--cin-red-bg); color:var(--cin-red); }
 .ep-num { font-size:11px; color:var(--label4); min-width:24px; padding-top:2px; font-weight:600; }
 .ep-info { flex:1; }
 .ep-title { font-size:13px; font-weight:700; margin-bottom:2px; color:var(--label); letter-spacing:-0.1px; }
 .ep-right { display:flex; flex-direction:column; align-items:flex-end; gap:5px; min-width:90px; }
 .ep-rating-input {
   width:46px; padding:4px 6px; font-size:13px; font-weight:700; text-align:center;
-  color:var(--ios-blue); background:var(--ios-blue-bg); border:none; border-radius:var(--r-sm);
+  color:var(--cin-red); background:var(--cin-red-bg); border:none; border-radius:var(--r-sm);
   outline:none; font-family:inherit;
 }
-.ep-rating-input:focus { box-shadow:0 0 0 2px var(--ios-blue); }
+.ep-rating-input:focus { box-shadow:0 0 0 2px var(--cin-red); }
 .ep-rating-input::-webkit-inner-spin-button,
 .season-rating-input::-webkit-inner-spin-button { opacity:1; }
 
@@ -790,12 +817,12 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 
 /* ── TMDB SEARCH ── */
 .search-block {
-  background:linear-gradient(135deg, var(--ios-blue-bg), rgba(45,195,201,0.08));
+  background:linear-gradient(135deg, var(--cin-red-bg), rgba(45,195,201,0.08));
   border:1.5px solid rgba(58,142,246,0.2);
   border-radius:var(--r-lg);
   padding:13px 15px; margin-bottom:16px;
 }
-.search-block-lbl { font-size:11px; color:var(--ios-blue); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:7px; display:flex; align-items:center; gap:5px; font-weight:700; }
+.search-block-lbl { font-size:11px; color:var(--cin-red); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:7px; display:flex; align-items:center; gap:5px; font-weight:700; }
 .search-block-row { display:flex; gap:7px; }
 .tmdb-results { margin-top:8px; display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; }
 .tmdb-item {
@@ -811,11 +838,11 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 .tmdb-info { flex:1; min-width:0; }
 .tmdb-name { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--label); letter-spacing:-0.1px; }
 .tmdb-year { font-size:11px; color:var(--label3); font-weight:500; margin-top:1px; }
-.tmdb-score { font-size:12px; color:var(--ios-blue); font-weight:700; white-space:nowrap; }
+.tmdb-score { font-size:12px; color:var(--cin-red); font-weight:700; white-space:nowrap; }
 .tmdb-status { font-size:12px; color:var(--label3); padding:5px 0; text-align:center; font-weight:500; }
 .tmdb-ok {
   display:flex; align-items:center; gap:7px; padding:9px 12px; margin-top:7px;
-  background:var(--ios-green-bg); border-radius:var(--r-md);
+  background:var(--cin-green-bg); border-radius:var(--r-md);
   font-size:12px; color:#1A8A4A; font-weight:700;
 }
 
@@ -826,7 +853,7 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   border-radius:var(--r-md);
   padding:11px 13px;
   box-shadow:var(--sh-sm);
-  border-left:3px solid var(--ios-blue);
+  border-left:3px solid var(--cin-red);
 }
 .comment-date { font-size:10px; color:var(--label3); margin-bottom:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
 .comment-text { font-size:13px; line-height:1.6; color:var(--label2); font-weight:500; }
@@ -837,16 +864,16 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 
 /* ── QUOTES & AWARDS ── */
 .quote-item {
-  border-left:3px solid var(--ios-pink);
+  border-left:3px solid var(--cin-rose);
   padding:7px 13px; margin-bottom:7px;
-  background:var(--ios-pink-tint);
+  background:var(--cin-rose-tint);
   border-radius:0 var(--r-md) var(--r-md) 0;
   font-style:italic; font-size:14px;
   color:var(--label2); line-height:1.6; font-weight:500;
 }
 .award-tag {
   padding:4px 11px;
-  background:var(--ios-yellow-bg);
+  background:var(--cin-gold-bg);
   border-radius:var(--r-pill);
   font-size:11px; color:#B85500; font-weight:700;
   display:inline-flex; align-items:center; gap:3px;
@@ -867,7 +894,7 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 }
 .num-picker-wrap input {
   width:80px; font-size:24px; font-weight:800; text-align:center;
-  color:var(--ios-blue); background:var(--ios-blue-bg);
+  color:var(--cin-red); background:var(--cin-red-bg);
   border:none; border-radius:var(--r-md); padding:8px;
   font-family:inherit; outline:none;
 }
@@ -955,14 +982,14 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   </div>
   <nav>
     <div class="nav-sec">General</div>
-    <div class="nav-item active" id="nav-dashboard"><span class="ico">◈</span>Dashboard</div>
+    <div class="nav-item active" id="nav-dashboard"><span class="ico">🏠</span>Dashboard</div>
     <div class="nav-sec">Series</div>
-    <div class="nav-item" id="nav-watching"><span class="ico">▶</span>Viendo ahora<span class="nav-badge" id="b-watching">0</span></div>
-    <div class="nav-item" id="nav-series"><span class="ico">◉</span>Mis series<span class="nav-badge" id="b-series">0</span></div>
-    <div class="nav-item" id="nav-pending-series"><span class="ico">◷</span>Pendientes<span class="nav-badge" id="b-ps">0</span></div>
+    <div class="nav-item" id="nav-watching"><span class="ico">▶️</span>Viendo ahora<span class="nav-badge" id="b-watching">0</span></div>
+    <div class="nav-item" id="nav-series"><span class="ico">📺</span>Mis series<span class="nav-badge" id="b-series">0</span></div>
+    <div class="nav-item" id="nav-pending-series"><span class="ico">🕐</span>Pendientes<span class="nav-badge" id="b-ps">0</span></div>
     <div class="nav-sec">Películas</div>
-    <div class="nav-item" id="nav-movies"><span class="ico">◈</span>Mis películas<span class="nav-badge" id="b-movies">0</span></div>
-    <div class="nav-item" id="nav-pending-movies"><span class="ico">◷</span>Pendientes<span class="nav-badge" id="b-pm">0</span></div>
+    <div class="nav-item" id="nav-movies"><span class="ico">🎬</span>Mis películas<span class="nav-badge" id="b-movies">0</span></div>
+    <div class="nav-item" id="nav-pending-movies"><span class="ico">🕐</span>Pendientes<span class="nav-badge" id="b-pm">0</span></div>
   </nav>
   <div class="sidebar-foot">
     <div class="stat-mini">
@@ -983,7 +1010,6 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   </div>
   <div id="content">
     <div id="view-dashboard" class="view active">
-      <div class="dash-hero"><div class="dash-title">Bienvenido a <span>CINELOG</span></div><div class="dash-sub">Tu colección audiovisual personal</div></div>
       <div class="stats-grid" id="dash-stats"></div>
       <div class="sec-title">▶ Viendo ahora</div>
       <div class="now-grid" id="now-list"></div>
@@ -1130,11 +1156,11 @@ function renderDashboard(){
   const nw=S.series.filter(s=>s.status==='watching');
   let eps=0; S.series.forEach(s=>(s.seasons||[]).forEach(t=>(t.episodes||[]).forEach(e=>{if(e.watched)eps++;})));
   id('dash-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-icon">📺</div><div class="stat-val">${ns.length}</div><div class="stat-lbl">Series</div></div>
-    <div class="stat-card"><div class="stat-icon">🎬</div><div class="stat-val">${nm.length}</div><div class="stat-lbl">Películas</div></div>
-    <div class="stat-card"><div class="stat-icon">▶</div><div class="stat-val">${nw.length}</div><div class="stat-lbl">Viendo</div></div>
-    <div class="stat-card"><div class="stat-icon">✓</div><div class="stat-val">${eps}</div><div class="stat-lbl">Eps vistos</div></div>
-    <div class="stat-card"><div class="stat-icon">◷</div><div class="stat-val">${S.series.filter(s=>s.status==='pending').length+S.movies.filter(m=>m.status==='pending').length}</div><div class="stat-lbl">Pendientes</div></div>`;
+    <div class="stat-card" data-action="nav" data-nav="series"><div class="stat-icon">📺</div><div class="stat-val">${ns.length}</div><div class="stat-lbl">Series</div></div>
+    <div class="stat-card" data-action="nav" data-nav="movies"><div class="stat-icon">🎬</div><div class="stat-val">${nm.length}</div><div class="stat-lbl">Películas</div></div>
+    <div class="stat-card" data-action="nav" data-nav="watching"><div class="stat-icon">🍿</div><div class="stat-val">${nw.length}</div><div class="stat-lbl">Viendo</div></div>
+    <div class="stat-card" data-action="nav" data-nav="series"><div class="stat-icon">✅</div><div class="stat-val">${eps}</div><div class="stat-lbl">Eps vistos</div></div>
+    <div class="stat-card" data-action="nav" data-nav="pending-series"><div class="stat-icon">🕐</div><div class="stat-val">${S.series.filter(s=>s.status==='pending').length+S.movies.filter(m=>m.status==='pending').length}</div><div class="stat-lbl">Pendientes</div></div>`;
   id('now-list').innerHTML = nw.length ? nw.map(s=>nowCardHTML(s)).join('') : '<div style="color:var(--text3);font-size:14px;font-weight:700">Nada en reproducción.</div>';
   const recent=[...S.series.filter(s=>s.status!=='pending'),...S.movies.filter(m=>m.status!=='pending')].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,5);
   id('recent-list').innerHTML=recent.length?recent.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◈</div><div class="empty-title">Colección vacía</div><div class="empty-sub">Añade tu primera serie o película.</div></div>';
@@ -1390,11 +1416,11 @@ function numPickerHTML(itemId, type, current){
   return '<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'
     +'<input type="number" class="num-picker-input" min="1" max="10" step="1" value="'+r+'" placeholder="—" '
     +'id="rate-input-'+itemId+'" style="width:70px;padding:8px 10px;font-size:20px;font-weight:800;text-align:center;'
-    +'color:var(--ios-blue);background:var(--ios-blue-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit">'
+    +'color:var(--cin-red);background:var(--cin-red-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit">'
     +'<span style="font-size:15px;color:var(--label3);font-weight:600">/ 10</span>'
     +'<button type="button" class="btn btn-primary btn-sm" id="rate-btn-'+itemId+'" '
     +'data-action="rate-item-btn" data-id="'+itemId+'" data-type="'+type+'" data-input="rate-input-'+itemId+'">Guardar</button>'
-    +(r?'<span id="rate-display-'+itemId+'" style="font-size:15px;color:var(--ios-blue);font-weight:800">'+r+' pts</span>':'<span id="rate-display-'+itemId+'"></span>')
+    +(r?'<span id="rate-display-'+itemId+'" style="font-size:15px;color:var(--cin-red);font-weight:800">'+r+' pts</span>':'<span id="rate-display-'+itemId+'"></span>')
     +'</div>';
 }
 
@@ -1771,7 +1797,7 @@ document.addEventListener('click', function(e){
   if(!el) return;
   const action=el.dataset.action;
 
-  if(action==='close-panel'){ closePanel(); return; }
+  if(action==='nav'){ navigate(el.dataset.nav); return; }
 
   if(action==='edit'){ openEditModal(el.dataset.id, el.dataset.type); return; }
   if(action==='delete'){
@@ -2041,15 +2067,5 @@ if(!S.series.length && !S.movies.length){
 updateBadges();
 renderDashboard();
 </script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(r => console.log('SW registered:', r.scope))
-      .catch(e => console.log('SW failed:', e));
-  });
-}
-</script>
-</body>
+<script>if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));</script></body>
 </html>
