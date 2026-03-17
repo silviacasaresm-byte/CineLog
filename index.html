@@ -694,6 +694,7 @@ nav { padding: 8px 0 12px; flex: 1; }
   background:linear-gradient(135deg, var(--cin-red-bg), var(--cin-gold-bg));
   display:flex; align-items:center; justify-content:center; font-size:80px;
   overflow:hidden;
+  pointer-events:none;
 }
 .det-backdrop img { width:100%; height:100%; object-fit:cover; filter:blur(12px) brightness(0.6) saturate(0.9); }
 .det-header-content {
@@ -722,9 +723,11 @@ nav { padding: 8px 0 12px; flex: 1; }
   border:none; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
   cursor:pointer; font-size:16px; color:var(--label2);
-  z-index:20;
+  z-index:50;
   transition: all .2s; box-shadow:0 2px 8px rgba(0,0,0,.18);
-  font-weight: 800;
+  font-weight:800;
+  pointer-events: all;
+  -webkit-tap-highlight-color: transparent;
 }
 .det-close:hover { background:#FF3B30; color:#fff; transform:rotate(90deg); }
 .det-title { font-size:21px; font-weight:800; line-height:1.2; margin-bottom:4px; color:var(--label); letter-spacing:-0.4px; }
@@ -1294,7 +1297,7 @@ function renderDashboard(){
     <div class="stat-card" data-action="nav" data-nav="watching"><div class="stat-icon">🍿</div><div class="stat-val">${nw.length}</div><div class="stat-lbl">Viendo</div></div>
     <div class="stat-card" data-action="nav" data-nav="series"><div class="stat-icon">✅</div><div class="stat-val">${eps}</div><div class="stat-lbl">Eps vistos</div></div>
     <div class="stat-card" data-action="nav" data-nav="pending-series"><div class="stat-icon">🕐</div><div class="stat-val">${S.series.filter(s=>s.status==='pending').length+S.movies.filter(m=>m.status==='pending').length}</div><div class="stat-lbl">Pendientes</div></div>`;
-  id('now-list').innerHTML = nw.length ? nw.map(s=>nowCardHTML(s)).join('') : '<div style="color:var(--text3);font-size:14px;font-weight:700">Nada en reproducción.</div>';
+  id('now-list').innerHTML = nw.length ? nw.map(s=>nowCardHTML(s)).join('') : '<div style="color:var(--label3);font-size:14px;font-weight:700">Nada en reproducción.</div>';
   const recent=[...S.series.filter(s=>s.status!=='pending'),...S.movies.filter(m=>m.status!=='pending')].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,5);
   id('recent-list').innerHTML=recent.length?recent.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◈</div><div class="empty-title">Colección vacía</div><div class="empty-sub">Añade tu primera serie o película.</div></div>';
 }
@@ -1446,7 +1449,7 @@ function mediaCardHTML(item,type){
     +'</div></div>'
     +'<div class="card-body"><div class="card-title">'+esc(item.title)+'</div>'
     +'<div class="card-year">'+(item.startYear||'?')+(item.endYear?'–'+item.endYear:'')+'</div>'
-    +'<div class="card-rating">'+(avg?'<span class="star-ico">★</span><span>'+avg+'</span>':'<span style="color:var(--text3)">Sin puntuar</span>')
+    +'<div class="card-rating">'+(avg?'<span class="star-ico">★</span><span>'+avg+'</span>':'<span style="color:var(--label3)">Sin puntuar</span>')
     +(item.imdbRating?'<span class="imdb-badge">IMDb '+item.imdbRating+'</span>':'')
     +'</div></div></div>';
 }
@@ -1460,7 +1463,7 @@ function pendItemHTML(item){
     +'<div class="pend-meta">'+(item.startYear||'')+(item.endYear?'–'+item.endYear:'')+' · '+esc(item.platform||'')+(item.genres&&item.genres.length?' · '+item.genres.slice(0,2).join(', '):'')+'</div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">'
     +statusBadge(item.status)
-    +(avg?'<div style="font-family:Fredoka,sans-serif;font-size:15px;color:var(--acc2);font-weight:700">★ '+avg+'</div>':'')
+    +(avg?'<div style="font-family:Fredoka,sans-serif;font-size:15px;color:var(--cin-red);font-weight:700">★ '+avg+'</div>':'')
     +'</div></div>';
 }
 
@@ -1483,12 +1486,12 @@ function seriesDetailHTML(s){
   const pct=total?Math.round(watched/total*100):0;
   return '<div class="det-header">'
     +'<div class="det-backdrop">'+(s.posterUrl?'<img src="'+esc(s.posterUrl)+'" alt="">':esc(s.emoji||'🎬'))+'</div>'
-    +'<div class="det-close" data-action="close-panel">✕</div>'
+    +'<button class="det-close" type="button">✕</button>'
     +'<div class="det-header-content"><div class="det-poster">'+posterHTML(s,true)+'</div>'
     +'<div style="flex:1"><div class="det-title">'+esc(s.title)+'</div>'
     +'<div class="det-meta">'+(s.startYear||'?')+(s.endYear?'–'+s.endYear:'')+' · '+total+' eps · <span class="'+platClass(s.platform)+'">'+esc(s.platform||'—')+'</span></div>'
     +'<div class="det-ratings">'
-    +(avg?'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display">★ '+avg+'</span></div>':'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display" style="color:var(--text3);font-size:14px">Sin puntuar</span></div>')
+    +(avg?'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display">★ '+avg+'</span></div>':'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display" style="color:var(--label3);font-size:14px">Sin puntuar</span></div>')
     +(s.imdbRating?'<span class="imdb-badge">IMDb '+s.imdbRating+'</span>':'')
     +statusBadge(s.status)+'</div></div></div></div>'
     +'<div class="det-body">'
@@ -1501,19 +1504,19 @@ function seriesDetailHTML(s){
     +'<div class="tabs"><div class="tab active" data-tab="t-prog">Progreso</div><div class="tab" data-tab="t-seasons">Temporadas</div><div class="tab" data-tab="t-comments">Comentarios</div><div class="tab" data-tab="t-info">Info</div></div>'
     +'<div id="t-prog" class="tab-pane active">'
     +'<div class="prog-tracker"><div class="pt-lbl">Progreso general</div>'
-    +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:5px;font-weight:700"><span>'+watched+'/'+total+' capítulos</span><span>'+pct+'%</span></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--label3);margin-bottom:5px;font-weight:700"><span>'+watched+'/'+total+' capítulos</span><span>'+pct+'%</span></div>'
     +'<div class="prog-bar" style="height:8px"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>'
     +currentEpTrackerHTML(s)+'</div>'
     +'<div id="t-seasons" class="tab-pane">'
-    +((s.seasons||[]).length===0?'<div style="text-align:center;color:var(--text3);padding:28px;font-size:14px;font-weight:700">Sin temporadas. <button class="btn btn-secondary btn-sm" data-action="add-season" data-id="'+s.id+'">Añadir</button></div>':(s.seasons||[]).map(t=>seasonAccHTML(s,t)).join(''))
+    +((s.seasons||[]).length===0?'<div style="text-align:center;color:var(--label3);padding:28px;font-size:14px;font-weight:700">Sin temporadas. <button class="btn btn-secondary btn-sm" data-action="add-season" data-id="'+s.id+'">Añadir</button></div>':(s.seasons||[]).map(t=>seasonAccHTML(s,t)).join(''))
     +'</div>'
     +'<div id="t-comments" class="tab-pane">'
     +'<div class="comment-list">'+(s.comments||[]).map((c,i)=>'<div class="comment"><div class="comment-date">'+new Date(c.date).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})+'</div><div class="comment-text">'+esc(c.text)+'</div><button class="btn btn-danger btn-sm" style="margin-top:7px" data-action="del-comment" data-sid="'+s.id+'" data-type="series" data-idx="'+i+'">Eliminar</button></div>').join('')+'</div>'
     +'<div style="display:flex;gap:8px;margin-top:10px"><textarea class="form-textarea" id="new-comment" placeholder="Escribe un comentario..." style="flex:1;min-height:55px"></textarea><button class="btn btn-primary" data-action="add-comment" data-sid="'+s.id+'" data-type="series" style="align-self:flex-end">Añadir</button></div>'
     +'</div>'
     +'<div id="t-info" class="tab-pane">'
-    +'<div class="form-row" style="margin-bottom:14px"><div><div class="form-label">Géneros</div><div class="tags">'+((s.genres||[]).map(g=>'<span class="tag">'+esc(g)+'</span>').join('')||'<span style="color:var(--text3);font-size:13px">—</span>')+'</div></div>'
-    +'<div><div class="form-label">Universos</div><div class="tags">'+((s.universes||[]).map(u=>'<span class="tag">'+esc(u)+'</span>').join('')||'<span style="color:var(--text3);font-size:13px">—</span>')+'</div></div></div>'
+    +'<div class="form-row" style="margin-bottom:14px"><div><div class="form-label">Géneros</div><div class="tags">'+((s.genres||[]).map(g=>'<span class="tag">'+esc(g)+'</span>').join('')||'<span style="color:var(--label3);font-size:13px">—</span>')+'</div></div>'
+    +'<div><div class="form-label">Universos</div><div class="tags">'+((s.universes||[]).map(u=>'<span class="tag">'+esc(u)+'</span>').join('')||'<span style="color:var(--label3);font-size:13px">—</span>')+'</div></div></div>'
     +(s.synopsis?'<div class="form-label">Sinopsis</div><div style="font-size:14px;color:var(--label3);line-height:1.7;background:var(--fill3);border-radius:var(--r-md);padding:13px;margin-bottom:16px;font-weight:500">'+esc(s.synopsis)+'</div>':'')
     +((s.awards||[]).length?'<div class="form-label">Premios</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+s.awards.map(a=>'<span class="award-tag">🏆 '+esc(a)+'</span>').join('')+'</div>':'')
     +'<div class="divider"></div><div class="form-label">Tu puntuación global</div>'+numPickerHTML(s.id,'series',s.userRating)
@@ -1523,7 +1526,7 @@ function seriesDetailHTML(s){
 function movieDetailHTML(m){
   return '<div class="det-header">'
     +'<div class="det-backdrop">'+(m.posterUrl?'<img src="'+esc(m.posterUrl)+'" alt="">':esc(m.emoji||'🎬'))+'</div>'
-    +'<div class="det-close" data-action="close-panel">✕</div>'
+    +'<button class="det-close" type="button">✕</button>'
     +'<div class="det-header-content"><div class="det-poster">'+posterHTML(m,true)+'</div>'
     +'<div style="flex:1"><div class="det-title">'+esc(m.title)+'</div>'
     +'<div class="det-meta">'+(m.startYear||'?')+(m.director?' · Dir. '+esc(m.director):'')+' · <span class="'+platClass(m.platform)+'">'+esc(m.platform||'—')+'</span></div>'
@@ -1538,14 +1541,14 @@ function movieDetailHTML(m){
     +'</div>'
     +'<div class="tabs"><div class="tab active" data-tab="m-info">Info</div><div class="tab" data-tab="m-quotes">Frases</div><div class="tab" data-tab="m-comments">Comentarios</div></div>'
     +'<div id="m-info" class="tab-pane active">'
-    +(m.director?'<div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:8px">Director: <strong style="color:var(--text)">'+esc(m.director)+'</strong></div>':'')
+    +(m.director?'<div style="font-size:14px;font-weight:700;color:var(--label2);margin-bottom:8px">Director: <strong style="color:var(--text)">'+esc(m.director)+'</strong></div>':'')
     +((m.genres||[]).length?'<div class="tags">'+m.genres.map(g=>'<span class="tag">'+esc(g)+'</span>').join('')+'</div>':'')
     +((m.awards||[]).length?'<div class="form-label" style="margin-top:12px">Premios</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">'+m.awards.map(a=>'<span class="award-tag">🏆 '+esc(a)+'</span>').join('')+'</div>':'')
-    +(m.synopsis?'<div class="form-label" style="margin-top:10px">Sinopsis</div><div style="font-size:14px;color:var(--text2);line-height:1.7;background:var(--bg3);border-radius:11px;padding:13px;border:2px solid var(--border);margin-bottom:16px;font-weight:600">'+esc(m.synopsis)+'</div>':'')
+    +(m.synopsis?'<div class="form-label" style="margin-top:10px">Sinopsis</div><div style="font-size:14px;color:var(--label2);line-height:1.7;background:var(--sys-bg3);border-radius:11px;padding:13px;border:2px solid var(--sep);margin-bottom:16px;font-weight:600">'+esc(m.synopsis)+'</div>':'')
     +'<div class="divider"></div><div class="form-label">Tu puntuación</div>'+numPickerHTML(m.id,'movies',m.userRating)
     +'</div>'
     +'<div id="m-quotes" class="tab-pane">'
-    +((m.quotes||[]).map((q,i)=>'<div class="quote-item" style="position:relative">«'+esc(q)+'»<button class="btn btn-danger btn-sm" style="position:absolute;right:8px;top:8px" data-action="del-quote" data-mid="'+m.id+'" data-idx="'+i+'">✕</button></div>').join('')||'<div style="color:var(--text3);font-size:14px;font-weight:700;padding:8px 0">Sin frases.</div>')
+    +((m.quotes||[]).map((q,i)=>'<div class="quote-item" style="position:relative">«'+esc(q)+'»<button class="btn btn-danger btn-sm" style="position:absolute;right:8px;top:8px" data-action="del-quote" data-mid="'+m.id+'" data-idx="'+i+'">✕</button></div>').join('')||'<div style="color:var(--label3);font-size:14px;font-weight:700;padding:8px 0">Sin frases.</div>')
     +'<div style="display:flex;gap:8px;margin-top:14px"><textarea class="form-textarea" id="new-quote" placeholder="Frase célebre..." style="flex:1;min-height:55px"></textarea><button class="btn btn-primary" data-action="add-quote" data-mid="'+m.id+'" style="align-self:flex-end">Añadir</button></div>'
     +'</div>'
     +'<div id="m-comments" class="tab-pane">'
@@ -1557,11 +1560,11 @@ function movieDetailHTML(m){
 function currentEpTrackerHTML(s){
   let ct=null,cs=null;
   (s.seasons||[]).forEach(t=>(t.episodes||[]).forEach(e=>{if(e.current){ct=e;cs=t;}}));
-  if(!ct) return '<div style="color:var(--text3);font-size:14px;font-weight:700;padding:14px;background:var(--bg3);border-radius:11px;border:2px solid var(--border)">Marca un capítulo como actual en Temporadas.</div>';
+  if(!ct) return '<div style="color:var(--label3);font-size:14px;font-weight:700;padding:14px;background:var(--sys-bg3);border-radius:11px;border:2px solid var(--sep)">Marca un capítulo como actual en Temporadas.</div>';
   return '<div class="prog-tracker"><div class="pt-lbl">Episodio actual</div>'
     +'<div style="font-size:15px;font-weight:800;margin-bottom:3px">'+esc(ct.title||'Sin título')+'</div>'
-    +'<div style="font-size:12px;color:var(--text3);margin-bottom:11px;font-weight:700">T'+cs.number+' · Ep '+ct.number+'</div>'
-    +'<div style="display:flex;gap:11px;align-items:center"><span style="font-size:13px;color:var(--text2);font-weight:700">Minuto:</span>'
+    +'<div style="font-size:12px;color:var(--label3);margin-bottom:11px;font-weight:700">T'+cs.number+' · Ep '+ct.number+'</div>'
+    +'<div style="display:flex;gap:11px;align-items:center"><span style="font-size:13px;color:var(--label2);font-weight:700">Minuto:</span>'
     +'<input type="number" class="form-input" style="width:78px;padding:6px 10px" value="'+(ct.minute||'')+'" placeholder="0" min="0" data-action="set-minute" data-sid="'+s.id+'" data-tid="'+cs.id+'" data-eid="'+ct.id+'">'
     +'</div></div>';
 }
@@ -1584,7 +1587,7 @@ function seasonAccHTML(s,t){
     +'<div style="display:flex;align-items:center;gap:5px">'
     +'<input type="number" class="season-rating-input" min="1" max="10" step="1" value="'+manualRating+'" placeholder="—" '
     +'data-action="rate-season" data-sid="'+s.id+'" data-tid="'+t.id+'" title="Puntuación manual de la temporada">'
-    +'<span style="font-size:11px;color:var(--text3);font-weight:700">/10</span>'
+    +'<span style="font-size:11px;color:var(--label3);font-weight:700">/10</span>'
     +(displayAvg?'<span class="s-avg" id="savg-'+t.id+'">'+displayAvg+'</span>':'<span class="s-avg" id="savg-'+t.id+'"></span>')
     +'</div>'
     +'<div style="display:flex;gap:5px">'
@@ -1593,7 +1596,7 @@ function seasonAccHTML(s,t){
     +'<button class="btn btn-danger btn-sm" data-action="del-season" data-sid="'+s.id+'" data-tid="'+t.id+'">🗑</button>'
     +'</div></div><div class="s-chevron">▼</div></div>'
     +'<div class="season-body">'+((t.episodes||[]).length===0
-      ?'<div style="padding:18px;color:var(--text3);font-size:13px;font-weight:700">Sin capítulos.</div>'
+      ?'<div style="padding:18px;color:var(--label3);font-size:13px;font-weight:700">Sin capítulos.</div>'
       :(t.episodes||[]).map(e=>epRowHTML(s,t,e)).join(''))
     +'</div></div>';
 }
@@ -1612,7 +1615,7 @@ function epRowHTML(s,t,e){
     +'<div style="display:flex;align-items:center;gap:4px">'
     +'<input type="number" class="ep-rating-input" min="1" max="10" step="1" value="'+(r||'')+'" placeholder="—" '
     +'data-action="rate-ep" data-sid="'+s.id+'" data-tid="'+t.id+'" data-eid="'+e.id+'">'
-    +'<span style="font-size:11px;color:var(--text3);font-weight:700">/10</span>'
+    +'<span style="font-size:11px;color:var(--label3);font-weight:700">/10</span>'
     +'</div>'
     +'<div style="display:flex;gap:4px">'
     +'<button class="btn btn-secondary btn-sm" data-action="set-cur-ep" data-sid="'+s.id+'" data-tid="'+t.id+'" data-eid="'+e.id+'" title="Marcar como episodio actual">▶</button>'
@@ -2053,6 +2056,9 @@ function parseAwards(str){
 //  EVENT DELEGATION — single listener handles all clicks
 // ═══════════════════════════════════════════
 document.addEventListener('click', function(e){
+  // ── Close panel button — checked FIRST before anything else ──
+  if(e.target.closest('.det-close')){ closePanel(); return; }
+
   // Nav items
   const navItem=e.target.closest('.nav-item');
   if(navItem && navItem.id) { navigate(navItem.id.replace('nav-','')); return; }
@@ -2089,6 +2095,13 @@ document.addEventListener('click', function(e){
   const action=el.dataset.action;
 
   if(action==='nav'){ navigate(el.dataset.nav); return; }
+  if(action==='close-panel'){ closePanel(); return; }
+  if(action==='set-view'){
+    const section=el.dataset.section, mode=el.dataset.mode;
+    if(section==='series'){ _seriesView=mode; renderSeriesGrid(id('search-input')?.value||''); }
+    else if(section==='movies'){ _moviesView=mode; renderMoviesGrid(id('search-input')?.value||''); }
+    return;
+  }
   if(action==='pick-platform'){
     const plat = el.dataset.plat;
     const platSel = id('f-platform');
@@ -2238,15 +2251,6 @@ document.addEventListener('click',function(e){
   if(pane) pane.classList.add('active');
 });
 
-// View toggle (grid/list) and sort handled via data-action
-document.addEventListener('click',function(e){
-  const btn=e.target.closest('[data-action="set-view"]');
-  if(!btn) return;
-  const section=btn.dataset.section, mode=btn.dataset.mode;
-  if(section==='series'){ _seriesView=mode; renderSeriesGrid(id('search-input')?.value||''); }
-  else if(section==='movies'){ _moviesView=mode; renderMoviesGrid(id('search-input')?.value||''); }
-});
-
 // Filter chips
 document.addEventListener('click',function(e){
   const chip=e.target.closest('.chip');
@@ -2379,6 +2383,10 @@ if(!S.series.length && !S.movies.length){
 }
 updateBadges();
 renderDashboard();
+</script>
+
+<script>
+if("serviceWorker"in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").then(()=>console.log("SW ok")).catch(()=>{});});}
 </script>
 </body>
 </html>
