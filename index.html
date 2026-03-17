@@ -1819,6 +1819,7 @@ document.addEventListener('click', function(e){
   const action=el.dataset.action;
 
   if(action==='nav'){ navigate(el.dataset.nav); return; }
+  if(action==='close-panel'){ closePanel(); return; }
 
   if(action==='edit'){ openEditModal(el.dataset.id, el.dataset.type); return; }
   if(action==='delete'){
