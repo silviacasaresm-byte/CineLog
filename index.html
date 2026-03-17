@@ -518,6 +518,11 @@ nav { padding: 8px 0 12px; flex: 1; }
 }
 .filter-lbl { font-size: 11px; color: var(--label3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
 
+/* ── Filter drawer ── */
+.filter-drawer { border: none; }
+.filter-drawer-summary { display: none; }
+.filter-toggle-btn { font-size: 12px; flex-shrink: 0; }
+
 /* ── VIEW TOOLBAR (sort + view toggle) ── */
 .view-toolbar {
   display: flex;
@@ -1120,6 +1125,10 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
       <div class="stat-row"><span>Películas</span><b id="sm-m">0</b></div>
       <div class="stat-row"><span>Eps vistos</span><b id="sm-e">0</b></div>
     </div>
+    <div style="display:flex;gap:6px;margin-top:12px">
+      <button id="btn-export" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center" title="Exportar datos">⬇ Exportar</button>
+      <label id="btn-import-label" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;cursor:pointer;margin:0" title="Importar datos">⬆ Importar<input type="file" id="btn-import" accept=".json" style="display:none"></label>
+    </div>
   </div>
 </aside>
 
@@ -1186,8 +1195,8 @@ let _pendingSeasons = [];
 let _pendingQuotes = [];
 let _activeSeriesFilter = null;
 let _activeMoviesFilter = null;
-let _seriesView = 'grid';   // 'grid' | 'list'
-let _moviesView = 'grid';
+let _seriesView = 'list';   // 'grid' | 'list'
+let _moviesView = 'list';
 let _seriesSort = 'none';   // 'none' | 'alpha' | 'rating' | 'platform'
 let _moviesSort = 'none';
 
@@ -1326,17 +1335,19 @@ function sortItems(items, sortKey, type){
   return copy;
 }
 
-function toolbarHTML(viewMode, sortKey, section){
-  return '<select class="sort-select" id="'+section+'-sort">'
+function toolbarHTML(viewMode, sortKey, section, hasActiveFilter){
+  return '<div style="display:flex;align-items:center;gap:8px;width:100%">'
+    +'<button class="btn btn-secondary btn-sm filter-toggle-btn" data-action="toggle-filters" data-section="'+section+'" style="'+(hasActiveFilter?'border-color:var(--cin-red);color:var(--cin-red)':'')+'">⚙ Filtros'+(hasActiveFilter?' ●':'')+'</button>'
+    +'<select class="sort-select" id="'+section+'-sort">'
     +'<option value="none"'+(sortKey==='none'?' selected':'')+'>Ordenar...</option>'
     +'<option value="alpha"'+(sortKey==='alpha'?' selected':'')+'>A → Z</option>'
     +'<option value="rating"'+(sortKey==='rating'?' selected':'')+'>⭐ Puntuación</option>'
     +'<option value="platform"'+(sortKey==='platform'?' selected':'')+'>📺 Plataforma</option>'
     +'</select>'
-    +'<div class="view-toggle">'
+    +'<div class="view-toggle" style="margin-left:auto">'
     +'<button class="view-btn'+(viewMode==='grid'?' active':'')+'" data-action="set-view" data-section="'+section+'" data-mode="grid" title="Cuadrícula">⊞</button>'
     +'<button class="view-btn'+(viewMode==='list'?' active':'')+'" data-action="set-view" data-section="'+section+'" data-mode="list" title="Lista">☰</button>'
-    +'</div>';
+    +'</div></div>';
 }
 
 function listItemHTML(item, type){
@@ -1368,19 +1379,22 @@ function renderSeriesGrid(q=''){
   if(universes.size) chips+='<span class="filter-lbl" style="margin-left:8px">Universo:</span>'+[...universes].map(u=>'<span class="chip'+(matchesFilter(_activeSeriesFilter,'universe',u)?' active':'')+'" data-type="universe" data-val="'+esc(u)+'">'+esc(u)+'</span>').join('');
   if(platforms.size) chips+='<span class="filter-lbl" style="margin-left:8px">Plataforma:</span>'+[...platforms].map(p=>'<span class="chip'+(matchesFilter(_activeSeriesFilter,'platform',p)?' active':'')+'" data-type="platform" data-val="'+esc(p)+'">'+esc(p)+'</span>').join('');
   chips+=['watching','finished','dropped'].map(s=>'<span class="chip'+(matchesFilter(_activeSeriesFilter,'status',s)?' active':'')+'" data-type="status" data-val="'+s+'">'+(s==='watching'?'▶ Viendo':s==='finished'?'✓ Fin':'✕ Aband.')+'</span>').join('');
-  id('series-filters').innerHTML=chips;
-  id('series-toolbar').innerHTML=toolbarHTML(_seriesView, _seriesSort, 'series');
+  // Collapsible filter drawer
+  const drawerOpen = id('series-filter-drawer')?.open || !!_activeSeriesFilter;
+  id('series-filters').innerHTML='<details id="series-filter-drawer" class="filter-drawer"'+(drawerOpen?' open':'')+'>'
+    +'<summary class="filter-drawer-summary" style="display:none"></summary>'
+    +'<div class="filter-bar" style="margin-bottom:0;padding:10px 0 4px">'+chips+'</div></details>';
 
-  const empty='<div class="empty" style="grid-column:1/-1"><div class="empty-ico">◉</div><div class="empty-title">Sin series</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  id('series-toolbar').innerHTML=toolbarHTML(_seriesView, _seriesSort, 'series', !!_activeSeriesFilter);
+
+  const empty='<div class="empty"><div class="empty-ico">◉</div><div class="empty-title">Sin series</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
   if(_seriesView==='grid'){
     id('series-grid').className='media-grid';
     id('series-grid').innerHTML=items.length?items.map(s=>mediaCardHTML(s,'series')).join(''):empty;
   } else {
     id('series-grid').className='media-list';
-    id('series-grid').innerHTML=items.length?items.map(s=>listItemHTML(s,'series')).join(''):empty.replace('grid-column:1/-1','');
+    id('series-grid').innerHTML=items.length?items.map(s=>listItemHTML(s,'series')).join(''):empty;
   }
-
-  // Attach sort select listener
   const sel=id('series-sort');
   if(sel) sel.addEventListener('change',()=>{ _seriesSort=sel.value; renderSeriesGrid(id('search-input')?.value||''); });
 }
@@ -1397,18 +1411,21 @@ function renderMoviesGrid(q=''){
   if(genres.size) chips+='<span class="filter-lbl">Género:</span>'+[...genres].map(g=>'<span class="chip'+(matchesFilter(_activeMoviesFilter,'genre',g)?' active':'')+'" data-type="genre" data-val="'+esc(g)+'">'+esc(g)+'</span>').join('');
   if(universes.size) chips+='<span class="filter-lbl" style="margin-left:8px">Universo:</span>'+[...universes].map(u=>'<span class="chip'+(matchesFilter(_activeMoviesFilter,'universe',u)?' active':'')+'" data-type="universe" data-val="'+esc(u)+'">'+esc(u)+'</span>').join('');
   if(platforms.size) chips+='<span class="filter-lbl" style="margin-left:8px">Plataforma:</span>'+[...platforms].map(p=>'<span class="chip'+(matchesFilter(_activeMoviesFilter,'platform',p)?' active':'')+'" data-type="platform" data-val="'+esc(p)+'">'+esc(p)+'</span>').join('');
-  id('movies-filters').innerHTML=chips;
-  id('movies-toolbar').innerHTML=toolbarHTML(_moviesView, _moviesSort, 'movies');
+  const drawerOpen = id('movies-filter-drawer')?.open || !!_activeMoviesFilter;
+  id('movies-filters').innerHTML='<details id="movies-filter-drawer" class="filter-drawer"'+(drawerOpen?' open':'')+'>'
+    +'<summary class="filter-drawer-summary" style="display:none"></summary>'
+    +'<div class="filter-bar" style="margin-bottom:0;padding:10px 0 4px">'+chips+'</div></details>';
 
-  const empty='<div class="empty" style="grid-column:1/-1"><div class="empty-ico">◈</div><div class="empty-title">Sin películas</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  id('movies-toolbar').innerHTML=toolbarHTML(_moviesView, _moviesSort, 'movies', !!_activeMoviesFilter);
+
+  const empty='<div class="empty"><div class="empty-ico">◈</div><div class="empty-title">Sin películas</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
   if(_moviesView==='grid'){
     id('movies-grid').className='media-grid';
     id('movies-grid').innerHTML=items.length?items.map(m=>mediaCardHTML(m,'movies')).join(''):empty;
   } else {
     id('movies-grid').className='media-list';
-    id('movies-grid').innerHTML=items.length?items.map(m=>listItemHTML(m,'movies')).join(''):empty.replace('grid-column:1/-1','');
+    id('movies-grid').innerHTML=items.length?items.map(m=>listItemHTML(m,'movies')).join(''):empty;
   }
-
   const sel=id('movies-sort');
   if(sel) sel.addEventListener('change',()=>{ _moviesSort=sel.value; renderMoviesGrid(id('search-input')?.value||''); });
 }
@@ -2364,8 +2381,9 @@ document.addEventListener('click', function(e){
   // Modal X
   if(e.target.id==='modal-x'){ closeModal(); return; }
 
-  // Add button
+  // Buttons by id
   if(e.target.id==='btn-add'){ openAddModal(); return; }
+  if(e.target.id==='btn-export'){ exportData(); return; }
   if(e.target.id==='btn-sync-all'){ syncAllSeries(); return; }
   if(e.target.id==='btn-refresh'){
     const btn = e.target;
@@ -2375,19 +2393,25 @@ document.addEventListener('click', function(e){
     load(); updateBadges(); renderView(); return;
   }
 
-  // Cards — check first before data-action to avoid missing clicks
+  // Cards — must be before data-action check
   const card=e.target.closest('.media-card,.now-card,.pend-item,.list-item');
   if(card && card.dataset.id && !e.target.closest('[data-action]')){
     openDetail(card.dataset.id, card.dataset.type); return;
   }
 
-  // data-action
+  // data-action — declared here, used by ALL handlers below
   const el=e.target.closest('[data-action]');
   if(!el) return;
   const action=el.dataset.action;
 
   if(action==='nav'){ navigate(el.dataset.nav); return; }
   if(action==='close-panel'){ closePanel(); return; }
+  if(action==='toggle-filters'){
+    const drawerId = el.dataset.section+'-filter-drawer';
+    const drawer = id(drawerId);
+    if(drawer) drawer.open = !drawer.open;
+    return;
+  }
   if(action==='set-view'){
     const section=el.dataset.section, mode=el.dataset.mode;
     if(section==='series'){ _seriesView=mode; renderSeriesGrid(id('search-input')?.value||''); }
@@ -2636,6 +2660,43 @@ function saveItemRating(itemId, type, rawVal){
 id('search-input').addEventListener('input',function(){
   if(S.view==='series') renderSeriesGrid(this.value);
   else if(S.view==='movies') renderMoviesGrid(this.value);
+});
+
+// ── Export / Import ──
+function exportData(){
+  const data = { series: S.series, movies: S.movies, exportedAt: new Date().toISOString(), version: 1 };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cinelog-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+id('btn-import').addEventListener('change', function(){
+  const file = this.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.series && !data.movies){ alert('Archivo no válido. Debe ser un backup de CineLog.'); return; }
+      const seriesCount = (data.series||[]).length;
+      const moviesCount = (data.movies||[]).length;
+      if(!confirm('¿Importar backup?\n\n📺 '+seriesCount+' series\n🎬 '+moviesCount+' películas\n\n⚠️ Esto reemplazará todos tus datos actuales.')){ return; }
+      S.series = data.series||[];
+      S.movies = data.movies||[];
+      save();
+      updateBadges();
+      renderView();
+      alert('✅ Importado correctamente: '+seriesCount+' series y '+moviesCount+' películas.');
+    } catch(err){
+      alert('Error al leer el archivo. Asegúrate de que es un backup válido de CineLog.');
+    }
+  };
+  reader.readAsText(file);
+  this.value = ''; // reset so same file can be imported again
 });
 
 // ═══════════════════════════════════════════
