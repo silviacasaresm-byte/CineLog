@@ -1943,18 +1943,20 @@ async function tmdbFill(tmdbId, mediaType){
 
     // Map to our dropdown values
     const mappedProviders = [...new Set(detectedProviders.map(n=>PLATFORM_MAP[n]).filter(Boolean))];
+    const platSel = id('f-platform');
+
+    // Always reset platform to blank first so Netflix isn't shown by default
+    if(platSel) platSel.value = '';
 
     let provHTML = '';
     if(mappedProviders.length === 0 && detectedProviders.length > 0){
-      // Providers found but not in our map — show raw names
       provHTML = '<div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--label3)">📺 En España: '+detectedProviders.slice(0,4).join(', ')+' — selecciona manualmente</div>';
       if(platSel) platSel.value='Otro';
     } else if(mappedProviders.length === 0){
       provHTML = '<div style="margin-top:8px;font-size:11px;color:var(--label3)">📺 No encontrado en streaming ES — selecciona manualmente</div>';
       if(platSel) platSel.value='Otro';
     } else {
-      // Always show all available platforms as chips so user can pick
-      // Pre-select the first one
+      // Pre-select first detected platform
       if(platSel){
         const match=[...platSel.options].find(o=>o.value===mappedProviders[0]);
         if(match) platSel.value=mappedProviders[0];
