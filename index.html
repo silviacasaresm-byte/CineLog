@@ -2665,13 +2665,14 @@ id('search-input').addEventListener('input',function(){
 // ── Export / Import ──
 function exportData(){
   const data = { series: S.series, movies: S.movies, exportedAt: new Date().toISOString(), version: 1 };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+  const json = JSON.stringify(data, null, 2);
+  const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
   const a = document.createElement('a');
-  a.href = url;
+  a.href = dataUri;
   a.download = 'cinelog-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
 }
 
 id('btn-import').addEventListener('change', function(){
