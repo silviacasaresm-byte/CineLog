@@ -1503,7 +1503,10 @@ function seriesDetailHTML(s){
     +'<div class="det-actions">'
     +'<button class="btn btn-primary" data-action="edit" data-id="'+s.id+'" data-type="series">✎ Editar</button>'
     +'<button class="btn btn-secondary" data-action="add-season" data-id="'+s.id+'">+ Temporada</button>'
-    +(s.tmdbId?'<button class="btn btn-secondary btn-sm" data-action="sync-seasons" data-id="'+s.id+'" title="Buscar nuevas temporadas en TMDB">🔄 Sincronizar</button>':'')
+    +(s.tmdbId
+      ? '<button class="btn btn-secondary btn-sm" data-action="sync-seasons" data-id="'+s.id+'" title="Buscar nuevas temporadas en TMDB">🔄 Sincronizar</button>'
+      : '<button class="btn btn-secondary btn-sm" data-action="link-tmdb" data-id="'+s.id+'" title="Vincular con TMDB para poder sincronizar">🔗 Vincular TMDB</button>'
+    )
     +(s.imdbUrl?'<a href="'+esc(s.imdbUrl)+'" target="_blank" class="btn btn-secondary btn-sm">IMDb ↗</a>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+s.id+'" data-type="series">🗑 Eliminar</button>'
     +'</div>'
@@ -2101,6 +2104,72 @@ Si no conoces la película o no tiene frases famosas, responde: {"quotes":[]}`
   }
 }
 
+// ── Link existing series to TMDB without losing data ──
+function openLinkTmdbModal(seriesId){
+  const s = S.series.find(x=>x.id===seriesId);
+  if(!s) return;
+  id('modal-foot').innerHTML='';
+  openModal('🔗 Vincular "'+s.title+'" con TMDB',
+    '<p style="font-size:13px;color:var(--label3);margin-bottom:14px;font-weight:600">'
+    +'Busca la serie en TMDB para vincularla. <strong style="color:var(--label)">No se perderá ningún dato</strong> — solo se guardará el ID para poder sincronizar temporadas nuevas en el futuro.</p>'
+    +'<div class="search-block">'
+    +'<div class="search-block-lbl">🔍 Buscar en TMDB</div>'
+    +'<div class="search-block-row">'
+    +'<input type="text" class="form-input" id="link-tmdb-q" placeholder="'+esc(s.title)+'" value="'+esc(s.title)+'">'
+    +'<button type="button" class="btn btn-primary" id="link-tmdb-btn" style="white-space:nowrap">Buscar</button>'
+    +'</div><div id="link-tmdb-results"></div></div>'
+  );
+  const cancelBtn=document.createElement('button'); cancelBtn.className='btn btn-secondary'; cancelBtn.textContent='Cancelar';
+  cancelBtn.addEventListener('click', closeModal);
+  id('modal-foot').appendChild(cancelBtn);
+
+  // Attach search
+  setTimeout(()=>{
+    const btn=id('link-tmdb-btn'), inp=id('link-tmdb-q');
+    if(btn) btn.addEventListener('click',()=>linkTmdbSearch(seriesId));
+    if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') linkTmdbSearch(seriesId); });
+    // Auto-search with series title
+    linkTmdbSearch(seriesId);
+  }, 50);
+}
+
+async function linkTmdbSearch(seriesId){
+  const s = S.series.find(x=>x.id===seriesId);
+  const q = (id('link-tmdb-q')?.value||s.title).trim();
+  const el = id('link-tmdb-results'); if(!el) return;
+  el.innerHTML='<div class="tmdb-status">🔍 Buscando...</div>';
+  try{
+    const res = await fetch(TMDB_BASE+'/search/tv?api_key='+TMDB_KEY+'&query='+encodeURIComponent(q)+'&language=es-ES');
+    const data = await res.json();
+    if(!data.results||!data.results.length){ el.innerHTML='<div class="tmdb-status">Sin resultados.</div>'; return; }
+    el.innerHTML='<div class="tmdb-results">'+data.results.slice(0,6).map(r=>{
+      const year=(r.first_air_date||'').slice(0,4);
+      const thumb=r.poster_path?TMDB_IMG+r.poster_path:'';
+      return '<div class="tmdb-item" data-link-id="'+r.id+'" data-link-sid="'+seriesId+'" data-link-title="'+esc(r.name||'')+'" data-link-seasons="'+r.number_of_seasons+'">'
+        +(thumb?'<img class="tmdb-thumb" src="'+thumb+'" onerror="this.style.display=\'none\'">':'<div class="tmdb-thumb" style="display:flex;align-items:center;justify-content:center">📺</div>')
+        +'<div class="tmdb-info"><div class="tmdb-name">'+esc(r.name||'')+'</div>'
+        +'<div class="tmdb-year">'+year+(r.number_of_seasons?' · '+r.number_of_seasons+' temp.':'')+'</div></div>'
+        +'<div class="tmdb-score" style="color:var(--cin-green);font-size:11px">Vincular</div>'
+        +'</div>';
+    }).join('')+'</div>';
+    el.querySelectorAll('.tmdb-item[data-link-id]').forEach(item=>{
+      item.addEventListener('click',()=>linkTmdbConfirm(item.dataset.linkSid, parseInt(item.dataset.linkId), item.dataset.linkTitle));
+    });
+  } catch(e){ el.innerHTML='<div class="tmdb-status">⚠️ Error de conexión.</div>'; }
+}
+
+async function linkTmdbConfirm(seriesId, tmdbId, tmdbTitle){
+  const s = S.series.find(x=>x.id===seriesId);
+  if(!s) return;
+  s.tmdbId = tmdbId;
+  s.updatedAt = Date.now();
+  save();
+  closeModal();
+  // Now run sync immediately to fetch any missing seasons
+  openDetail(seriesId, 'series');
+  setTimeout(()=>syncSeasons(seriesId), 300);
+}
+
 // ── Sync seasons from TMDB (only adds NEW seasons, preserves existing data) ──
 async function syncSeasons(seriesId){
   const s = S.series.find(x=>x.id===seriesId);
@@ -2347,6 +2416,7 @@ document.addEventListener('click', function(e){
   }
   if(action==='add-season'){ openSeasonModal(el.dataset.id); return; }
   if(action==='sync-seasons'){ syncSeasons(el.dataset.id); return; }
+  if(action==='link-tmdb'){ openLinkTmdbModal(el.dataset.id); return; }
   if(action==='add-ep'){ openEpisodeModal(el.dataset.sid, el.dataset.tid); return; }
   if(action==='del-season'){
     if(!confirm('¿Eliminar temporada?')) return;
