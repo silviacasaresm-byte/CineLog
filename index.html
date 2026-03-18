@@ -1199,6 +1199,10 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--cin-dark);color:white;padding:10px 20px;border-radius:var(--r-pill);font-size:13px;font-weight:700;z-index:9998;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;white-space:nowrap}
 #toast.show{transform:translateX(-50%) translateY(0)}
 </style>
+<!-- Firebase SDK — blocking load, must be before body scripts -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -1352,11 +1356,6 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 
 
 
-
-<!-- Firebase SDK (synchronous — must load before app scripts) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <!-- Main app -->
 <script>
@@ -3174,8 +3173,7 @@ if(!S.series.length && !S.movies.length){
     const el = document.getElementById(id);
     if (el) el.onkeydown = e => { if (e.key === 'Enter') document.getElementById('btn-submit-auth').click(); };
   });
-})();
-
+});
 </script>
 
 <script>
