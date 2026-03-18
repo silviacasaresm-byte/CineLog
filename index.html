@@ -1314,7 +1314,14 @@ let _moviesSort = 'none';
 // ═══════════════════════════════════════════
 //  STORAGE
 // ═══════════════════════════════════════════
-// save() and load() are defined in the Firebase module script above
+// ── Storage: delegates to Firebase (defined in firebase-init script) ──
+function save() {
+  if(typeof window._fbSave === 'function') window._fbSave();
+  else { updateBadges(); } // fallback during init
+}
+async function load() {
+  if(typeof window._fbLoad === 'function') return window._fbLoad();
+}
 
 // ═══════════════════════════════════════════
 //  BADGES
@@ -2916,10 +2923,16 @@ if(!S.series.length && !S.movies.length){
 </script>
 
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" onload="firebaseAppLoaded=true;tryInitFirebase()"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js" onload="firebaseAuthLoaded=true;tryInitFirebase()"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js" onload="firebaseDbLoaded=true;tryInitFirebase()"></script>
 <script>
+var firebaseAppLoaded=false,firebaseAuthLoaded=false,firebaseDbLoaded=false;
+function tryInitFirebase(){
+  if(!firebaseAppLoaded||!firebaseAuthLoaded||!firebaseDbLoaded) return;
+  initCinelogFirebase();
+}
+function initCinelogFirebase(){
 // ── FIREBASE INIT ──
 const firebaseConfig = {
   apiKey: "AIzaSyD5sv3EhCGKC8o-4P0t0a5EppIOiAmeRWQ",
@@ -2938,7 +2951,7 @@ window.fbCurrentUser = null;
 
 // ── Save / Load ──
 let _saveTimer = null;
-window.save = function() {
+window._fbSave = function() {
   updateBadges();
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(async ()=>{
@@ -2951,7 +2964,7 @@ window.save = function() {
   }, 1500);
 };
 
-window.load = async function() {
+window._fbLoad = async function() {
   if(!window.fbCurrentUser){ S.series=[]; S.movies=[]; return; }
   try{
     const snap = await db.collection('users').doc(window.fbCurrentUser.uid)
@@ -3007,7 +3020,7 @@ auth.onAuthStateChanged(async (user) => {
     loginScreen.classList.add('hidden');
     appEl.style.display='flex';
     renderUserBtn(user);
-    await window.load();
+    await window._fbLoad();
     updateBadges();
     renderDashboard();
   } else {
@@ -3111,6 +3124,7 @@ document.getElementById('btn-submit-auth').addEventListener('click', async ()=>{
   const el = document.getElementById(eid);
   if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btn-submit-auth').click(); });
 });
+} // end initCinelogFirebase
 </script>
 
 <script>
