@@ -2993,12 +2993,11 @@ if(!S.series.length && !S.movies.length){
 
 <!-- Firebase init (after app so functions like updateBadges are defined) -->
 <script>
-
 // ════════════════════════════════════════
-//  FIREBASE
+//  FIREBASE — runs after CDN scripts in <head>
 // ════════════════════════════════════════
 (function() {
-  const FIREBASE_CONFIG = {
+  var cfg = {
     apiKey: "AIzaSyD5sv3EhCGKC8o-4P0t0a5EppIOiAmeRWQ",
     authDomain: "cinelog-46d2c.firebaseapp.com",
     projectId: "cinelog-46d2c",
@@ -3007,120 +3006,137 @@ if(!S.series.length && !S.movies.length){
     appId: "1:1005364085115:web:6613ed24ca733cbd463dde"
   };
 
-  firebase.initializeApp(FIREBASE_CONFIG);
-  const auth = firebase.auth();
-  const db   = firebase.firestore();
+  // Guard: if Firebase CDN failed to load
+  if (typeof firebase === 'undefined') {
+    document.getElementById('login-spinner').style.display = 'none';
+    document.getElementById('login-content').style.display = 'block';
+    document.getElementById('login-error').textContent = '⚠️ Error cargando Firebase. Comprueba tu conexión.';
+    return;
+  }
+
+  firebase.initializeApp(cfg);
+  var auth = firebase.auth();
+  var db   = firebase.firestore();
   window.fbCurrentUser = null;
 
-  // ── Save ──
-  let _t = null;
+  // ── Save (debounced 1.5s) ──
+  var _st = null;
   window.fbSave = function() {
-    clearTimeout(_t);
-    _t = setTimeout(async () => {
+    clearTimeout(_st);
+    _st = setTimeout(function() {
       if (!window.fbCurrentUser) return;
-      try {
-        await db.doc('users/' + window.fbCurrentUser.uid + '/data/main').set({
-          series: S.series, movies: S.movies, updatedAt: Date.now()
+      db.doc('users/' + window.fbCurrentUser.uid + '/data/main')
+        .set({ series: S.series, movies: S.movies, updatedAt: Date.now() })
+        .catch(function(e) {
+          console.error('Save error', e);
+          showToast('⚠️ Error al guardar');
         });
-      } catch(e) {
-        console.error('fbSave', e);
-        showToast('⚠️ Error al guardar en la nube');
-      }
     }, 1500);
   };
 
   // ── Load ──
-  window.fbLoad = async function() {
-    if (!window.fbCurrentUser) { S.series=[]; S.movies=[]; return; }
-    try {
-      const snap = await db.doc('users/' + window.fbCurrentUser.uid + '/data/main').get();
-      if (snap.exists) {
-        const d = snap.data();
-        S.series = d.series || [];
-        S.movies = d.movies || [];
-      } else {
-        S.series = []; S.movies = [];
-        // Migrate from localStorage
-        try {
-          const raw = localStorage.getItem('cinelog');
-          if (raw) {
-            const p = JSON.parse(raw);
-            if ((p.series||[]).length || (p.movies||[]).length) {
-              S.series = p.series||[];
-              S.movies = p.movies||[];
-              await db.doc('users/' + window.fbCurrentUser.uid + '/data/main').set({
-                series: S.series, movies: S.movies, updatedAt: Date.now()
-              });
-              showToast('✅ Datos migrados a la nube');
-              localStorage.removeItem('cinelog');
+  window.fbLoad = function() {
+    if (!window.fbCurrentUser) { S.series=[]; S.movies=[]; return Promise.resolve(); }
+    return db.doc('users/' + window.fbCurrentUser.uid + '/data/main')
+      .get()
+      .then(function(snap) {
+        if (snap.exists) {
+          var d = snap.data();
+          S.series = d.series || [];
+          S.movies = d.movies || [];
+        } else {
+          S.series = []; S.movies = [];
+          // Migrate from localStorage if present
+          try {
+            var raw = localStorage.getItem('cinelog');
+            if (raw) {
+              var p = JSON.parse(raw);
+              if ((p.series||[]).length || (p.movies||[]).length) {
+                S.series = p.series||[];
+                S.movies = p.movies||[];
+                db.doc('users/' + window.fbCurrentUser.uid + '/data/main')
+                  .set({ series: S.series, movies: S.movies, updatedAt: Date.now() });
+                localStorage.removeItem('cinelog');
+                showToast('✅ Datos migrados a la nube');
+              }
             }
-          }
-        } catch(e) {}
-      }
-    } catch(e) {
-      console.error('fbLoad', e);
-      S.series=[]; S.movies=[];
-    }
+          } catch(e) {}
+        }
+      })
+      .catch(function(e) {
+        console.error('Load error', e.code, e.message);
+        S.series=[]; S.movies=[];
+        showToast('⚠️ Error al cargar datos: ' + (e.code||e.message));
+      });
   };
 
-  // ── Auth state ──
-  const timeout = setTimeout(() => {
+  // ── Auth timeout (show form if Firebase doesn't respond in 8s) ──
+  var _timeout = setTimeout(function() {
     document.getElementById('login-spinner').style.display = 'none';
     document.getElementById('login-content').style.display = 'block';
     document.getElementById('login-error').textContent = '⚠️ No se pudo conectar. Comprueba tu conexión.';
   }, 8000);
 
-  auth.onAuthStateChanged(async (user) => {
-    clearTimeout(timeout);
+  // ── Auth state ──
+  auth.onAuthStateChanged(function(user) {
+    clearTimeout(_timeout);
     window.fbCurrentUser = user;
+    var loginEl = document.getElementById('login-screen');
+    var appEl   = document.getElementById('app');
+
     if (user) {
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('app').style.display = 'flex';
+      loginEl.classList.add('hidden');
+      appEl.style.display = 'flex';
       _renderUserBtn(user);
-      await window.fbLoad();
-      updateBadges();
-      renderDashboard();
+      window.fbLoad().then(function() {
+        updateBadges();
+        renderDashboard();
+      });
     } else {
-      document.getElementById('login-screen').classList.remove('hidden');
-      document.getElementById('app').style.display = 'none';
+      loginEl.classList.remove('hidden');
+      appEl.style.display = 'none';
       document.getElementById('login-spinner').style.display = 'none';
       document.getElementById('login-content').style.display = 'block';
     }
   });
 
+  // ── User button ──
   function _renderUserBtn(user) {
-    let btn = document.getElementById('user-menu-btn');
+    var btn = document.getElementById('user-menu-btn');
     if (!btn) {
       btn = document.createElement('button');
       btn.id = 'user-menu-btn';
-      const nav = document.querySelector('#sidebar nav');
-      document.getElementById('sidebar').insertBefore(btn, nav);
+      var sidebar = document.getElementById('sidebar');
+      var nav = sidebar.querySelector('nav');
+      sidebar.insertBefore(btn, nav);
     }
-    const name = user.displayName || user.email || 'Usuario';
+    var name = user.displayName || user.email || 'Usuario';
+    var initials = name.slice(0,2).toUpperCase();
     btn.innerHTML = '<div class="user-avatar">'
-      + (user.photoURL ? '<img src="' + user.photoURL + '" onerror="this.style.display=\'none\'">' : name.slice(0,2).toUpperCase())
+      + (user.photoURL ? '<img src="' + user.photoURL + '" onerror="this.style.display=\'none\'">' : initials)
       + '</div><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left">'
       + name.split('@')[0] + '</span>';
-    btn.onclick = () => { if (confirm('¿Cerrar sesión?')) auth.signOut(); };
+    btn.onclick = function() {
+      if (confirm('¿Cerrar sesión de CineLog?')) auth.signOut();
+    };
   }
 
   // ── Google login ──
-  document.getElementById('btn-google-login').addEventListener('click', async () => {
+  document.getElementById('btn-google-login').onclick = function() {
     document.getElementById('login-error').textContent = '';
-    try {
-      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-    } catch(e) {
-      const msgs = {
-        'auth/popup-blocked': 'Popup bloqueado. Usa email/contraseña o activa popups.',
-        'auth/popup-closed-by-user': ''
-      };
-      document.getElementById('login-error').textContent = msgs[e.code] || 'Error: ' + e.message;
-    }
-  });
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .catch(function(e) {
+        var msgs = {
+          'auth/popup-blocked': 'Popup bloqueado. Usa email/contraseña.',
+          'auth/popup-closed-by-user': ''
+        };
+        document.getElementById('login-error').textContent = msgs[e.code] || ('Error: ' + e.message);
+      });
+  };
 
-  // ── Email login/register ──
-  let _mode = 'login';
-  document.getElementById('tab-login').onclick = () => {
+  // ── Tab toggle ──
+  var _mode = 'login';
+  document.getElementById('tab-login').onclick = function() {
     _mode = 'login';
     document.getElementById('tab-login').classList.add('active');
     document.getElementById('tab-register').classList.remove('active');
@@ -3128,7 +3144,7 @@ if(!S.series.length && !S.movies.length){
     document.getElementById('btn-submit-auth').textContent = 'Entrar';
     document.getElementById('login-error').textContent = '';
   };
-  document.getElementById('tab-register').onclick = () => {
+  document.getElementById('tab-register').onclick = function() {
     _mode = 'register';
     document.getElementById('tab-register').classList.add('active');
     document.getElementById('tab-login').classList.remove('active');
@@ -3137,43 +3153,45 @@ if(!S.series.length && !S.movies.length){
     document.getElementById('login-error').textContent = '';
   };
 
-  document.getElementById('btn-submit-auth').onclick = async () => {
-    const email = document.getElementById('auth-email').value.trim();
-    const pass  = document.getElementById('auth-password').value;
-    const pass2 = document.getElementById('auth-password2').value;
-    const errEl = document.getElementById('login-error');
-    const btn   = document.getElementById('btn-submit-auth');
+  // ── Email submit ──
+  document.getElementById('btn-submit-auth').onclick = function() {
+    var email = document.getElementById('auth-email').value.trim();
+    var pass  = document.getElementById('auth-password').value;
+    var pass2 = document.getElementById('auth-password2').value;
+    var errEl = document.getElementById('login-error');
+    var btn   = document.getElementById('btn-submit-auth');
     errEl.textContent = '';
     if (!email || !pass) { errEl.textContent = 'Rellena email y contraseña.'; return; }
     if (_mode === 'register' && pass !== pass2) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
-    if (_mode === 'register' && pass.length < 6)  { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
+    if (_mode === 'register' && pass.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
     btn.textContent = '⏳...'; btn.disabled = true;
-    try {
-      if (_mode === 'login') {
-        await auth.signInWithEmailAndPassword(email, pass);
-      } else {
-        await auth.createUserWithEmailAndPassword(email, pass);
-      }
-    } catch(e) {
+    var p = _mode === 'login'
+      ? auth.signInWithEmailAndPassword(email, pass)
+      : auth.createUserWithEmailAndPassword(email, pass);
+    p.catch(function(e) {
       btn.textContent = _mode === 'login' ? 'Entrar' : 'Crear cuenta';
       btn.disabled = false;
-      const msgs = {
+      var msgs = {
         'auth/user-not-found':'Usuario no encontrado.',
         'auth/wrong-password':'Contraseña incorrecta.',
         'auth/email-already-in-use':'Email ya registrado.',
         'auth/invalid-email':'Email no válido.',
         'auth/invalid-credential':'Email o contraseña incorrectos.',
-        'auth/too-many-requests':'Demasiados intentos. Espera un momento.',
+        'auth/too-many-requests':'Demasiados intentos. Espera.',
       };
-      errEl.textContent = msgs[e.code] || 'Error: ' + e.message;
-    }
+      errEl.textContent = msgs[e.code] || ('Error: ' + e.message);
+    });
   };
 
-  ['auth-email','auth-password','auth-password2'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.onkeydown = e => { if (e.key === 'Enter') document.getElementById('btn-submit-auth').click(); };
+  // Enter key
+  ['auth-email','auth-password','auth-password2'].forEach(function(eid) {
+    var el = document.getElementById(eid);
+    if (el) el.onkeydown = function(e) {
+      if (e.key === 'Enter') document.getElementById('btn-submit-auth').click();
+    };
   });
-});
+
+})(); // <-- IIFE immediately invoked
 </script>
 
 <script>
