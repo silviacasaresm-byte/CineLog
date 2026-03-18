@@ -2916,13 +2916,11 @@ if(!S.series.length && !S.movies.length){
 </script>
 
 
-<script type="module">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
 // ── FIREBASE INIT ──
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-         GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
 const firebaseConfig = {
   apiKey: "AIzaSyD5sv3EhCGKC8o-4P0t0a5EppIOiAmeRWQ",
   authDomain: "cinelog-46d2c.firebaseapp.com",
@@ -2932,13 +2930,10 @@ const firebaseConfig = {
   appId: "1:1005364085115:web:6613ed24ca733cbd463dde"
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-// Expose to global scope for the main app
-window.fbAuth = auth;
-window.fbDb = db;
 window.fbCurrentUser = null;
 
 // ── Save / Load ──
@@ -2949,9 +2944,9 @@ window.save = function() {
   _saveTimer = setTimeout(async ()=>{
     if(!window.fbCurrentUser) return;
     try{
-      await setDoc(doc(db,'users',window.fbCurrentUser.uid,'data','main'),{
-        series: S.series, movies: S.movies, updatedAt: Date.now()
-      });
+      await db.collection('users').doc(window.fbCurrentUser.uid)
+        .collection('data').doc('main')
+        .set({ series: S.series, movies: S.movies, updatedAt: Date.now() });
     }catch(e){ console.error('Save error',e); showToast('⚠️ Error al guardar'); }
   }, 1500);
 };
@@ -2959,8 +2954,9 @@ window.save = function() {
 window.load = async function() {
   if(!window.fbCurrentUser){ S.series=[]; S.movies=[]; return; }
   try{
-    const snap = await getDoc(doc(db,'users',window.fbCurrentUser.uid,'data','main'));
-    if(snap.exists()){
+    const snap = await db.collection('users').doc(window.fbCurrentUser.uid)
+      .collection('data').doc('main').get();
+    if(snap.exists){
       const d = snap.data();
       S.series = d.series||[];
       S.movies = d.movies||[];
@@ -2974,9 +2970,9 @@ window.load = async function() {
           if((p.series||[]).length||(p.movies||[]).length){
             S.series = p.series||[];
             S.movies = p.movies||[];
-            await setDoc(doc(db,'users',window.fbCurrentUser.uid,'data','main'),{
-              series:S.series, movies:S.movies, updatedAt:Date.now()
-            });
+            await db.collection('users').doc(window.fbCurrentUser.uid)
+              .collection('data').doc('main')
+              .set({ series:S.series, movies:S.movies, updatedAt:Date.now() });
             showToast('✅ Datos migrados a la nube');
             localStorage.removeItem('cinelog');
           }
@@ -2990,23 +2986,31 @@ window.load = async function() {
 };
 
 // ── Auth State ──
-onAuthStateChanged(auth, async (user) => {
+const _authTimeout = setTimeout(()=>{
+  const sp = document.getElementById('login-spinner');
+  const lc = document.getElementById('login-content');
+  const err = document.getElementById('login-error');
+  if(sp && sp.style.display !== 'none'){
+    sp.style.display='none';
+    if(lc) lc.style.display='block';
+    if(err) err.textContent='⚠️ Tardando mucho. Comprueba tu conexión a internet.';
+  }
+}, 5000);
+
+auth.onAuthStateChanged(async (user) => {
+  clearTimeout(_authTimeout);
   window.fbCurrentUser = user;
   const loginScreen = document.getElementById('login-screen');
   const appEl = document.getElementById('app');
 
   if(user){
-    // Show app, hide login
     loginScreen.classList.add('hidden');
     appEl.style.display='flex';
-    // Update user button
     renderUserBtn(user);
-    // Load data and render
     await window.load();
     updateBadges();
     renderDashboard();
   } else {
-    // Show login, hide app
     loginScreen.classList.remove('hidden');
     appEl.style.display='none';
     document.getElementById('login-spinner').style.display='none';
@@ -3026,21 +3030,27 @@ function renderUserBtn(user){
   const name = user.displayName||user.email||'Usuario';
   const initials = name.slice(0,2).toUpperCase();
   btn.innerHTML = '<div class="user-avatar">'
-    +(user.photoURL?'<img src="'+user.photoURL+'" onerror="this.style.display='none'">':initials)
+    +(user.photoURL?'<img src="'+user.photoURL+'" onerror="this.style.display=\'none\'">':initials)
     +'</div><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
     +name.split('@')[0]+'</span><span style="margin-left:auto;opacity:.5;font-size:10px">▼</span>';
   btn.onclick = ()=>{
-    if(confirm('¿Cerrar sesión de CineLog?')) signOut(auth);
+    if(confirm('¿Cerrar sesión de CineLog?')) auth.signOut();
   };
 }
 
 // ── Google Login ──
 document.getElementById('btn-google-login').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('login-error');
+  errEl.textContent='';
   try{
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
   }catch(e){
-    document.getElementById('login-error').textContent = 'Error con Google: '+e.message;
+    if(e.code==='auth/popup-blocked'){
+      errEl.textContent='Popup bloqueado. Activa los popups para este sitio o usa email/contraseña.';
+    } else {
+      errEl.textContent='Error con Google: '+(e.message||e.code);
+    }
   }
 });
 
@@ -3068,19 +3078,23 @@ document.getElementById('btn-submit-auth').addEventListener('click', async ()=>{
   const pass = document.getElementById('auth-password').value;
   const pass2 = document.getElementById('auth-password2').value;
   const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-submit-auth');
   errEl.textContent='';
 
   if(!email||!pass){ errEl.textContent='Rellena email y contraseña.'; return; }
   if(authMode==='register' && pass!==pass2){ errEl.textContent='Las contraseñas no coinciden.'; return; }
   if(authMode==='register' && pass.length<6){ errEl.textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
 
+  btn.textContent='⏳ Entrando...'; btn.disabled=true;
   try{
     if(authMode==='login'){
-      await signInWithEmailAndPassword(auth, email, pass);
+      await auth.signInWithEmailAndPassword(email, pass);
     } else {
-      await createUserWithEmailAndPassword(auth, email, pass);
+      await auth.createUserWithEmailAndPassword(email, pass);
     }
   }catch(e){
+    btn.textContent = authMode==='login'?'Entrar':'Crear cuenta';
+    btn.disabled=false;
     const msgs = {
       'auth/user-not-found':'Usuario no encontrado.',
       'auth/wrong-password':'Contraseña incorrecta.',
@@ -3093,7 +3107,6 @@ document.getElementById('btn-submit-auth').addEventListener('click', async ()=>{
   }
 });
 
-// Enter key on inputs
 ['auth-email','auth-password','auth-password2'].forEach(eid=>{
   const el = document.getElementById(eid);
   if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btn-submit-auth').click(); });
