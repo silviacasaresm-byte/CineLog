@@ -1096,11 +1096,117 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   .form-row{ grid-template-columns:1fr; }
   #detail-panel{ width:100vw; }
 }
+
+/* ── LOGIN SCREEN ── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--sys-bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background-image: radial-gradient(ellipse at 20% 0%, rgba(181,64,64,0.08) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 100%, rgba(192,138,48,0.08) 0%, transparent 60%);
+}
+#login-screen.hidden { display: none; }
+.login-card {
+  background: var(--sys-elevated);
+  border-radius: var(--r-xl);
+  padding: 36px 28px 28px;
+  width: 100%; max-width: 360px;
+  box-shadow: var(--sh-lg);
+  text-align: center;
+}
+.login-logo { font-size: 56px; margin-bottom: 4px; }
+.login-title { font-size: 28px; font-weight: 800; color: var(--cin-red); letter-spacing: -1px; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--label3); font-weight: 500; margin-bottom: 28px; }
+.login-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+.login-divider span { font-size: 11px; color: var(--label3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.login-divider::before, .login-divider::after { content:''; flex:1; height:1px; background:var(--sep-opaque); }
+#login-error { font-size: 12px; font-weight: 700; color: #B54040; margin-top: 10px; min-height: 18px; }
+#login-tabs { display:flex; background:var(--fill3); border-radius:var(--r-pill); padding:3px; margin-bottom:20px; }
+.login-tab { flex:1; padding:7px; font-size:13px; font-weight:700; border:none; background:none; border-radius:var(--r-pill); cursor:pointer; color:var(--label3); transition:all .15s; }
+.login-tab.active { background:var(--sys-elevated); color:var(--label); box-shadow:var(--sh-sm); }
+.login-form { display:flex; flex-direction:column; gap:10px; }
+.login-input { width:100%; padding:12px 14px; border:1.5px solid var(--sep-opaque); border-radius:var(--r-md); font-family:inherit; font-size:14px; background:var(--sys-bg); color:var(--label); outline:none; box-sizing:border-box; }
+.login-input:focus { border-color:var(--cin-red); }
+.btn-google {
+  width:100%; padding:13px; border-radius:var(--r-md);
+  background: white; border: 1.5px solid var(--sep-opaque);
+  font-family: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all .15s; box-shadow: var(--sh-sm);
+}
+.btn-google:hover { box-shadow: var(--sh-md); transform: translateY(-1px); }
+.btn-google svg { flex-shrink:0; }
+#btn-submit-auth { width:100%; padding:13px; background:var(--cin-red); color:white; border:none; border-radius:var(--r-md); font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; }
+#btn-submit-auth:hover { background:var(--acc-dark); }
+.loading-spinner {
+  width:36px; height:36px; border-radius:50%;
+  border:3px solid var(--fill2); border-top-color:var(--cin-red);
+  animation: spin .7s linear infinite; margin: 20px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* ── USER MENU ── */
+#user-menu-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px 8px 8px;
+  background:var(--fill3); border:none; border-radius:var(--r-pill);
+  cursor:pointer; font-family:inherit; font-size:12px; font-weight:700;
+  color:var(--label2); transition:all .15s; margin:12px 16px;
+}
+#user-menu-btn:hover { background:var(--fill2); }
+.user-avatar {
+  width:28px; height:28px; border-radius:50%;
+  background:var(--cin-red); color:white;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800; flex-shrink:0; overflow:hidden;
+}
+.user-avatar img { width:100%; height:100%; object-fit:cover; }
+/* ── TOAST ── */
+#toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+  background:var(--cin-dark); color:white; padding:10px 20px;
+  border-radius:var(--r-pill); font-size:13px; font-weight:700;
+  z-index:9998; transition:transform .3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events:none; white-space:nowrap;
+}
+#toast.show { transform:translateX(-50%) translateY(0); }
+
 </style>
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🍿</div>
+    <div class="login-title">CINELOG</div>
+    <div class="login-sub">Tu universo audiovisual</div>
+    <div id="login-spinner" class="loading-spinner"></div>
+    <div id="login-content" style="display:none">
+      <button class="btn-google" id="btn-google-login">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continuar con Google
+      </button>
+      <div class="login-divider"><span>o</span></div>
+      <div id="login-tabs">
+        <button class="login-tab active" id="tab-login">Entrar</button>
+        <button class="login-tab" id="tab-register">Registrarse</button>
+      </div>
+      <div class="login-form">
+        <input class="login-input" type="email" id="auth-email" placeholder="Email" autocomplete="email">
+        <input class="login-input" type="password" id="auth-password" placeholder="Contraseña" autocomplete="current-password">
+        <input class="login-input" type="password" id="auth-password2" placeholder="Repetir contraseña" style="display:none" autocomplete="new-password">
+        <button id="btn-submit-auth">Entrar</button>
+      </div>
+      <div id="login-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
 </head>
 <body>
 <div id="sidebar-overlay"></div>
-<div id="app">
+<div id="app" style="display:none">
 
 <!-- SIDEBAR -->
 <aside id="sidebar">
@@ -1186,7 +1292,12 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   </div>
 </div>
 
+
 <script>
+// ═══════════════════════════════════════════
+//  CINELOG APP
+// ═══════════════════════════════════════════
+
 // ═══════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════
@@ -1203,20 +1314,7 @@ let _moviesSort = 'none';
 // ═══════════════════════════════════════════
 //  STORAGE
 // ═══════════════════════════════════════════
-function save() {
-  const data = JSON.stringify({ series: S.series, movies: S.movies });
-  try { localStorage.setItem('cinelog', data); } catch(e) {
-    try { sessionStorage.setItem('cinelog', data); } catch(e2) {} }
-  updateBadges();
-}
-function load() {
-  let raw = null;
-  try { raw = localStorage.getItem('cinelog'); } catch(e) {}
-  if (!raw) { try { raw = sessionStorage.getItem('cinelog'); } catch(e) {} }
-  if (raw) { try { const p = JSON.parse(raw); S.series = p.series||[]; S.movies = p.movies||[]; } catch(e) {} }
-  if (!S.series) S.series = [];
-  if (!S.movies) S.movies = [];
-}
+// save() and load() are defined in the Firebase module script above
 
 // ═══════════════════════════════════════════
 //  BADGES
@@ -1237,6 +1335,12 @@ function updateBadges() {
 //  HELPERS
 // ═══════════════════════════════════════════
 function id(x){return document.getElementById(x)}
+function showToast(msg, duration=3000){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), duration);
+}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function uid(){return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2)}
@@ -2775,7 +2879,6 @@ id('btn-import').addEventListener('change', function(){
 // ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
-load();
 if(!S.series.length && !S.movies.length){
   S.series=[
     {id:'demo1',type:'series',title:'Breaking Bad',startYear:2008,endYear:2013,platform:'Netflix',
@@ -2809,12 +2912,197 @@ if(!S.series.length && !S.movies.length){
   ];
   save();
 }
-updateBadges();
-renderDashboard();
+// updateBadges and renderDashboard called by Firebase auth state observer
+</script>
+
+
+<script type="module">
+// ── FIREBASE INIT ──
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+         GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD5sv3EhCGKC8o-4P0t0a5EppIOiAmeRWQ",
+  authDomain: "cinelog-46d2c.firebaseapp.com",
+  projectId: "cinelog-46d2c",
+  storageBucket: "cinelog-46d2c.firebasestorage.app",
+  messagingSenderId: "1005364085115",
+  appId: "1:1005364085115:web:6613ed24ca733cbd463dde"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+// Expose to global scope for the main app
+window.fbAuth = auth;
+window.fbDb = db;
+window.fbCurrentUser = null;
+
+// ── Save / Load ──
+let _saveTimer = null;
+window.save = function() {
+  updateBadges();
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async ()=>{
+    if(!window.fbCurrentUser) return;
+    try{
+      await setDoc(doc(db,'users',window.fbCurrentUser.uid,'data','main'),{
+        series: S.series, movies: S.movies, updatedAt: Date.now()
+      });
+    }catch(e){ console.error('Save error',e); showToast('⚠️ Error al guardar'); }
+  }, 1500);
+};
+
+window.load = async function() {
+  if(!window.fbCurrentUser){ S.series=[]; S.movies=[]; return; }
+  try{
+    const snap = await getDoc(doc(db,'users',window.fbCurrentUser.uid,'data','main'));
+    if(snap.exists()){
+      const d = snap.data();
+      S.series = d.series||[];
+      S.movies = d.movies||[];
+    } else {
+      S.series=[]; S.movies=[];
+      // Migrate from localStorage
+      try{
+        const raw = localStorage.getItem('cinelog');
+        if(raw){
+          const p = JSON.parse(raw);
+          if((p.series||[]).length||(p.movies||[]).length){
+            S.series = p.series||[];
+            S.movies = p.movies||[];
+            await setDoc(doc(db,'users',window.fbCurrentUser.uid,'data','main'),{
+              series:S.series, movies:S.movies, updatedAt:Date.now()
+            });
+            showToast('✅ Datos migrados a la nube');
+            localStorage.removeItem('cinelog');
+          }
+        }
+      }catch(e){}
+    }
+  }catch(e){
+    console.error('Load error',e);
+    S.series=[]; S.movies=[];
+  }
+};
+
+// ── Auth State ──
+onAuthStateChanged(auth, async (user) => {
+  window.fbCurrentUser = user;
+  const loginScreen = document.getElementById('login-screen');
+  const appEl = document.getElementById('app');
+
+  if(user){
+    // Show app, hide login
+    loginScreen.classList.add('hidden');
+    appEl.style.display='flex';
+    // Update user button
+    renderUserBtn(user);
+    // Load data and render
+    await window.load();
+    updateBadges();
+    renderDashboard();
+  } else {
+    // Show login, hide app
+    loginScreen.classList.remove('hidden');
+    appEl.style.display='none';
+    document.getElementById('login-spinner').style.display='none';
+    document.getElementById('login-content').style.display='block';
+  }
+});
+
+function renderUserBtn(user){
+  let btn = document.getElementById('user-menu-btn');
+  if(!btn){
+    btn = document.createElement('button');
+    btn.id='user-menu-btn';
+    const sidebar = document.getElementById('sidebar');
+    const nav = sidebar.querySelector('nav');
+    sidebar.insertBefore(btn, nav);
+  }
+  const name = user.displayName||user.email||'Usuario';
+  const initials = name.slice(0,2).toUpperCase();
+  btn.innerHTML = '<div class="user-avatar">'
+    +(user.photoURL?'<img src="'+user.photoURL+'" onerror="this.style.display='none'">':initials)
+    +'</div><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+    +name.split('@')[0]+'</span><span style="margin-left:auto;opacity:.5;font-size:10px">▼</span>';
+  btn.onclick = ()=>{
+    if(confirm('¿Cerrar sesión de CineLog?')) signOut(auth);
+  };
+}
+
+// ── Google Login ──
+document.getElementById('btn-google-login').addEventListener('click', async ()=>{
+  try{
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  }catch(e){
+    document.getElementById('login-error').textContent = 'Error con Google: '+e.message;
+  }
+});
+
+// ── Email Login / Register ──
+let authMode = 'login';
+document.getElementById('tab-login').addEventListener('click',()=>{
+  authMode='login';
+  document.getElementById('tab-login').classList.add('active');
+  document.getElementById('tab-register').classList.remove('active');
+  document.getElementById('auth-password2').style.display='none';
+  document.getElementById('btn-submit-auth').textContent='Entrar';
+  document.getElementById('login-error').textContent='';
+});
+document.getElementById('tab-register').addEventListener('click',()=>{
+  authMode='register';
+  document.getElementById('tab-register').classList.add('active');
+  document.getElementById('tab-login').classList.remove('active');
+  document.getElementById('auth-password2').style.display='block';
+  document.getElementById('btn-submit-auth').textContent='Crear cuenta';
+  document.getElementById('login-error').textContent='';
+});
+
+document.getElementById('btn-submit-auth').addEventListener('click', async ()=>{
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-password').value;
+  const pass2 = document.getElementById('auth-password2').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent='';
+
+  if(!email||!pass){ errEl.textContent='Rellena email y contraseña.'; return; }
+  if(authMode==='register' && pass!==pass2){ errEl.textContent='Las contraseñas no coinciden.'; return; }
+  if(authMode==='register' && pass.length<6){ errEl.textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
+
+  try{
+    if(authMode==='login'){
+      await signInWithEmailAndPassword(auth, email, pass);
+    } else {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    }
+  }catch(e){
+    const msgs = {
+      'auth/user-not-found':'Usuario no encontrado.',
+      'auth/wrong-password':'Contraseña incorrecta.',
+      'auth/email-already-in-use':'Este email ya está registrado.',
+      'auth/invalid-email':'Email no válido.',
+      'auth/invalid-credential':'Email o contraseña incorrectos.',
+      'auth/too-many-requests':'Demasiados intentos. Espera un momento.',
+    };
+    errEl.textContent = msgs[e.code]||('Error: '+e.message);
+  }
+});
+
+// Enter key on inputs
+['auth-email','auth-password','auth-password2'].forEach(eid=>{
+  const el = document.getElementById(eid);
+  if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btn-submit-auth').click(); });
+});
 </script>
 
 <script>
 if("serviceWorker"in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").then(()=>console.log("SW ok")).catch(()=>{});});}
 </script>
+
 </body>
 </html>
