@@ -2665,69 +2665,86 @@ id('search-input').addEventListener('input',function(){
 
 // ── Export / Import ──
 async function exportData(){
-  const data = { series: S.series, movies: S.movies, exportedAt: new Date().toISOString(), version: 1 };
-  const json = JSON.stringify(data);
-  const jsonPretty = JSON.stringify(data, null, 2);
-  const filename = 'cinelog-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  // Full export
+  const full = { series: S.series, movies: S.movies, exportedAt: new Date().toISOString(), version: 1 };
+  const fullJson = JSON.stringify(full);
+
+  // Slim export — strips episode/season descriptions (re-syncable from TMDB)
+  const slim = {
+    exportedAt: new Date().toISOString(), version: 1,
+    series: S.series.map(s=>({
+      ...s,
+      synopsis: '',
+      seasons: (s.seasons||[]).map(t=>({
+        ...t, desc:'',
+        episodes: (t.episodes||[]).map(e=>({
+          id:e.id, number:e.number, title:e.title,
+          watched:e.watched, current:e.current, rating:e.rating, minute:e.minute
+          // desc stripped — re-sync from TMDB
+        }))
+      }))
+    })),
+    movies: S.movies.map(m=>({...m, synopsis:''}))
+  };
+  const slimJson = JSON.stringify(slim);
+  const slimKB = Math.round(slimJson.length/1024);
+  const fullKB = Math.round(fullJson.length/1024);
 
   id('modal-foot').innerHTML='';
   openModal('⬇ Exportar backup',
-    '<div style="background:var(--fill3);border-radius:var(--r-md);padding:12px;margin-bottom:14px;display:flex;gap:16px;align-items:center">'
-    +'<div>'
+    '<div style="background:var(--fill3);border-radius:var(--r-md);padding:12px;margin-bottom:14px">'
     +'<div style="font-size:13px;font-weight:800">📺 '+S.series.length+' series · 🎬 '+S.movies.length+' películas</div>'
-    +'<div style="font-size:11px;color:var(--label3);margin-top:2px">'+Math.round(jsonPretty.length/1024)+' KB · '+filename+'</div>'
-    +'</div></div>'
-    +'<div style="display:flex;flex-direction:column;gap:8px" id="export-options">'
-    +'<button class="btn btn-primary" id="exp-clipboard" style="justify-content:flex-start;gap:10px;padding:12px 16px">📋 <span><strong>Copiar al portapapeles</strong><br><small style="font-weight:500;opacity:.7">Pega en Keep, Notas, Drive...</small></span></button>'
-    +'<button class="btn btn-secondary" id="exp-email" style="justify-content:flex-start;gap:10px;padding:12px 16px">✉️ <span><strong>Enviármelo por email</strong><br><small style="font-weight:500;opacity:.7">Abre Gmail con el backup</small></span></button>'
-    +'<button class="btn btn-secondary" id="exp-share" style="justify-content:flex-start;gap:10px;padding:12px 16px">📤 <span><strong>Compartir</strong><br><small style="font-weight:500;opacity:.7">WhatsApp, Drive, Telegram...</small></span></button>'
+    +'<div style="font-size:11px;color:var(--label3);margin-top:4px">'
+    +'Compacto: <b>'+slimKB+' KB</b> · Completo: <b>'+fullKB+' KB</b></div>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+
+    // Compact copy — recommended
+    +'<button class="btn btn-primary" id="exp-slim" style="justify-content:flex-start;gap:10px;padding:12px 16px">'
+    +'📋 <span><strong>Copiar backup compacto</strong><br>'
+    +'<small style="font-weight:500;opacity:.8">'+slimKB+' KB · Sin descripciones de episodios</small></span></button>'
+
+    // Share compact
+    +'<button class="btn btn-secondary" id="exp-share-slim" style="justify-content:flex-start;gap:10px;padding:12px 16px">'
+    +'📤 <span><strong>Compartir backup compacto</strong><br>'
+    +'<small style="font-weight:500;opacity:.7">WhatsApp, Drive, Telegram...</small></span></button>'
+
+    // Full copy
+    +'<button class="btn btn-secondary" id="exp-full" style="justify-content:flex-start;gap:10px;padding:12px 16px">'
+    +'💾 <span><strong>Copiar backup completo</strong><br>'
+    +'<small style="font-weight:500;opacity:.7">'+fullKB+' KB · Incluye descripciones de episodios</small></span></button>'
+
     +'</div>'
     +'<div id="exp-msg" style="margin-top:10px;font-size:12px;font-weight:700;min-height:20px"></div>'
   );
+
+  const msgEl = ()=>id('exp-msg');
+
+  async function tryCopy(json, label){
+    try{
+      await navigator.clipboard.writeText(json);
+      msgEl().innerHTML='<span style="color:var(--cin-green)">✅ '+label+' copiado. Pégalo en Google Keep, Drive o envíatelo por email.</span>';
+    }catch(e){
+      msgEl().innerHTML='<span style="color:var(--cin-amber)">⚠️ No se pudo copiar automáticamente. Prueba con Compartir.</span>';
+    }
+  }
+
+  id('exp-slim').addEventListener('click',()=>tryCopy(slimJson,'Backup compacto'));
+  id('exp-full').addEventListener('click',()=>tryCopy(fullJson,'Backup completo'));
+  id('exp-share-slim').addEventListener('click',()=>{
+    if(navigator.share){
+      navigator.share({title:'cinelog-backup-'+new Date().toISOString().slice(0,10)+'.json', text:slimJson})
+        .then(()=>msgEl().innerHTML='<span style="color:var(--cin-green)">✅ Compartido.</span>')
+        .catch(()=>{});
+    } else {
+      msgEl().innerHTML='<span style="color:var(--label3)">Tu navegador no soporta compartir. Usa Copiar.</span>';
+    }
+  });
 
   const closeBtn=document.createElement('button');
   closeBtn.className='btn btn-secondary'; closeBtn.textContent='Cerrar';
   closeBtn.addEventListener('click',closeModal);
   id('modal-foot').appendChild(closeBtn);
-
-  // Option 1: Clipboard
-  id('exp-clipboard').addEventListener('click', async ()=>{
-    try{
-      await navigator.clipboard.writeText(jsonPretty);
-      id('exp-msg').innerHTML='<span style="color:var(--cin-green)">✅ Copiado. Pégalo en Google Keep, en un email o en un archivo de texto.</span>';
-    }catch(e){
-      // Fallback: select textarea
-      id('exp-msg').innerHTML='';
-      const ta=document.createElement('textarea');
-      ta.value=jsonPretty; ta.style.cssText='width:100%;height:100px;font-size:8px;font-family:monospace;border:1px solid var(--sep-opaque);border-radius:8px;padding:6px;-webkit-user-select:all;user-select:all';
-      ta.readOnly=true; ta.onclick=function(){ this.select(); this.setSelectionRange(0,999999); };
-      id('exp-msg').appendChild(ta);
-      setTimeout(()=>{ ta.focus(); ta.select(); ta.setSelectionRange(0,999999); },50);
-    }
-  });
-
-  // Option 2: Email
-  id('exp-email').addEventListener('click',()=>{
-    const subject = encodeURIComponent('CineLog Backup '+new Date().toISOString().slice(0,10));
-    const body = encodeURIComponent('Guarda este backup de CineLog:\n\n'+jsonPretty);
-    // mailto has URL length limits — if too big, warn
-    if(body.length > 8000){
-      id('exp-msg').innerHTML='<span style="color:var(--cin-amber)">⚠️ Backup demasiado grande para email. Usa Copiar o Compartir.</span>';
-      return;
-    }
-    window.location.href='mailto:?subject='+subject+'&body='+body;
-  });
-
-  // Option 3: Web Share
-  id('exp-share').addEventListener('click',()=>{
-    if(navigator.share){
-      navigator.share({ title: filename, text: jsonPretty })
-        .then(()=>{ id('exp-msg').innerHTML='<span style="color:var(--cin-green)">✅ Compartido.</span>'; })
-        .catch(()=>{});
-    } else {
-      id('exp-msg').innerHTML='<span style="color:var(--label3)">Tu navegador no soporta compartir. Usa Copiar.</span>';
-    }
-  });
 }
 
 id('btn-import').addEventListener('change', function(){
