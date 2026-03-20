@@ -1206,7 +1206,7 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 <main id="main">
   <div class="topbar">
     <button id="hamburger">☰</button>
-    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-title" id="topbar-title"></div>
     <div class="search-wrap"><span>🔍</span><input type="text" id="search-input" placeholder="Buscar..."></div>
     <button class="btn btn-primary" id="btn-add" style="display:none">+ Añadir</button>
     <button id="btn-refresh" title="Actualizar">↻</button>
@@ -1269,8 +1269,8 @@ let _activeSeriesFilter = null;
 let _activeMoviesFilter = null;
 let _seriesView = 'list';   // 'grid' | 'list'
 let _moviesView = 'list';
-let _seriesSort = 'none';   // 'none' | 'alpha' | 'rating' | 'platform'
-let _moviesSort = 'none';
+let _seriesSort = 'recent';   // 'recent' | 'alpha' | 'rating' | 'platform'
+let _moviesSort = 'recent';
 
 // ═══════════════════════════════════════════
 //  STORAGE
@@ -1337,7 +1337,7 @@ function seasonAvg(t){
 // ═══════════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════════
-const VIEW_TITLES={dashboard:'Dashboard',watching:'Viendo ahora',series:'Mis series','pending-series':'Series pendientes',movies:'Mis películas','pending-movies':'Películas pendientes'};
+const VIEW_TITLES={dashboard:'',watching:'Viendo ahora',series:'Mis series','pending-series':'Series pendientes',movies:'Mis películas','pending-movies':'Películas pendientes'};
 function navigate(view){
   try{
   S.view=view;
@@ -1347,7 +1347,7 @@ function navigate(view){
   const nav=id('nav-'+view); if(nav) nav.classList.add('active');
   const vEl=id('view-'+view); if(vEl) vEl.classList.add('active');
   const tb=id('topbar-title'); if(tb) tb.textContent=VIEW_TITLES[view]||view;
-  const ba=id('btn-add'); if(ba) ba.style.display=['series','movies','pending-series','pending-movies'].includes(view)?'inline-flex':'none';
+  const ba=id('btn-add'); if(ba) ba.style.display='inline-flex';
   renderView();
   }catch(err){console.error('navigate error:',err); showToast('Error nav: '+err.message);}
 }
@@ -1407,7 +1407,9 @@ function sortItems(items, sortKey, type){
     });
   }
   if(sortKey==='platform') return copy.sort((a,b)=>(a.platform||'').localeCompare(b.platform||'','es'));
-  return copy;
+  if(sortKey==='recent') return copy.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  // default: sort by recent (último editado) when 'none'
+  return copy.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
 }
 
 function toolbarHTML(viewMode, sortKey, section, hasActiveFilter){
@@ -1418,6 +1420,7 @@ function toolbarHTML(viewMode, sortKey, section, hasActiveFilter){
     +'<option value="alpha"'+(sortKey==='alpha'?' selected':'')+'>A → Z</option>'
     +'<option value="rating"'+(sortKey==='rating'?' selected':'')+'>⭐ Puntuación</option>'
     +'<option value="platform"'+(sortKey==='platform'?' selected':'')+'>📺 Plataforma</option>'
+    +'<option value="recent"'+(sortKey==='recent'?' selected':'')+'>🕐 Último editado</option>'
     +'</select>'
     +'<div class="view-toggle" style="margin-left:auto">'
     +'<button class="view-btn'+(viewMode==='grid'?' active':'')+'" data-action="set-view" data-section="'+section+'" data-mode="grid" title="Cuadrícula">⊞</button>'
@@ -1434,8 +1437,8 @@ function listItemHTML(item, type){
     +'<div class="list-meta">'+(item.startYear||'?')+(item.endYear?'–'+item.endYear:'')+(item.genres&&item.genres.length?' · '+item.genres.slice(0,2).join(', '):'')+'</div>'
     +statusBadge(item.status)
     +'</div>'
-    +'<div class="list-right">'
-    +(avg?'<div class="list-rating">★ '+avg+'</div>':'')
+    +'<div class="list-right" style="gap:6px">'
+    +'<div class="list-rating" data-action="rate-item" data-id="'+item.id+'" data-type="'+type+'" style="cursor:pointer;font-size:15px;font-weight:800;color:'+(avg?'var(--cin-red)':'var(--label3)')+';min-width:36px;text-align:center" title="Cambiar nota">'+(avg?'★ '+avg:'★ —')+'</div>'
     +'<div class="list-plat">'+esc(item.platform||'')+'</div>'
     +(item.imdbRating?'<span class="imdb-badge">'+item.imdbRating+'</span>':'')
     +'</div></div>';
@@ -1593,7 +1596,13 @@ function seriesDetailHTML(s){
     +'<div style="flex:1"><div class="det-title">'+esc(s.title)+'</div>'
     +'<div class="det-meta">'+(s.startYear||'?')+(s.endYear?'–'+s.endYear:'')+' · '+total+' eps · <span class="'+platClass(s.platform)+'">'+esc(s.platform||'—')+'</span></div>'
     +'<div class="det-ratings">'
-    +(avg?'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display">★ '+avg+'</span></div>':'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display" style="color:var(--label3);font-size:14px">Sin puntuar</span></div>')
+    +'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="toggleRatingInline(\'' + s.id + '\',\'series\')">'
+    +(avg?'★ '+avg:'<span style="color:var(--label3);font-size:13px">Puntuar</span>')
+    +'<span style="font-size:11px;color:var(--label3)">✏</span></span></div>'
+    +'<div id="rating-inline-'+s.id+'" style="display:none;align-items:center;gap:6px;margin-top:4px">'
+    +'<input type="number" min="1" max="10" step="1" value="'+(s.userRating||'')+'"     id="rating-inline-input-'+s.id+'" style="width:60px;padding:6px;font-size:18px;font-weight:800;text-align:center;color:var(--cin-red);background:var(--cin-red-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit">'
+    +'<button class="btn btn-primary btn-sm" data-action="rate-item-btn" data-id="'+s.id+'" data-type="series" data-input="rating-inline-input-'+s.id+'">✓</button>'
+    +'</div>'
     +(s.imdbRating?'<span class="imdb-badge">IMDb '+s.imdbRating+'</span>':'')
     +statusBadge(s.status)+'</div></div></div></div>'
     +'<div class="det-body">'
@@ -1607,25 +1616,25 @@ function seriesDetailHTML(s){
     +(s.imdbUrl?'<a href="'+esc(s.imdbUrl)+'" target="_blank" class="btn btn-secondary btn-sm">IMDb ↗</a>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+s.id+'" data-type="series">🗑 Eliminar</button>'
     +'</div>'
-    +'<div class="tabs"><div class="tab active" data-tab="t-prog">Progreso</div><div class="tab" data-tab="t-seasons">Temporadas</div><div class="tab" data-tab="t-comments">Comentarios</div><div class="tab" data-tab="t-info">Info</div></div>'
-    +'<div id="t-prog" class="tab-pane active">'
-    +'<div class="prog-tracker"><div class="pt-lbl">Progreso general</div>'
+    +'<div class="tabs"><div class="tab active" data-tab="t-info">Info</div><div class="tab" data-tab="t-seasons">Temporadas</div><div class="tab" data-tab="t-comments">Comentarios</div></div>'
+    +'<div id="t-info" class="tab-pane active">'
+    +'<div class="prog-tracker" style="margin-bottom:14px"><div class="pt-lbl">Progreso general</div>'
     +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--label3);margin-bottom:5px;font-weight:700"><span>'+watched+'/'+total+' capítulos</span><span>'+pct+'%</span></div>'
     +'<div class="prog-bar" style="height:8px"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>'
-    +currentEpTrackerHTML(s)+'</div>'
+    +currentEpTrackerHTML(s)
+    +'<div class="divider"></div>'
+    +'<div class="form-row" style="margin-bottom:14px"><div><div class="form-label">Géneros</div><div class="tags">'+((s.genres||[]).map(g=>'<span class="tag">'+esc(g)+'</span>').join('')||'<span style="color:var(--label3);font-size:13px">—</span>')+'</div></div>'
+    +'<div><div class="form-label">Universos</div><div class="tags">'+((s.universes||[]).map(u=>'<span class="tag">'+esc(u)+'</span>').join('')||'<span style="color:var(--label3);font-size:13px">—</span>')+'</div></div></div>'
+    +(s.synopsis?'<div class="form-label">Sinopsis</div><div style="font-size:14px;color:var(--label3);line-height:1.7;background:var(--fill3);border-radius:var(--r-md);padding:13px;margin-bottom:16px;font-weight:500">'+esc(s.synopsis)+'</div>':'')
+    +((s.awards||[]).length?'<div class="form-label">Premios</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+s.awards.map(a=>'<span class="award-tag">🏆 '+esc(a)+'</span>').join('')+'</div>':'')
+    +'<div class="divider"></div><div class="form-label">Tu puntuación global</div>'+numPickerHTML(s.id,'series',s.userRating)
+    +'</div>'
     +'<div id="t-seasons" class="tab-pane">'
     +((s.seasons||[]).length===0?'<div style="text-align:center;color:var(--label3);padding:28px;font-size:14px;font-weight:700">Sin temporadas. <button class="btn btn-secondary btn-sm" data-action="add-season" data-id="'+s.id+'">Añadir</button></div>':(s.seasons||[]).map(t=>seasonAccHTML(s,t)).join(''))
     +'</div>'
     +'<div id="t-comments" class="tab-pane">'
     +'<div class="comment-list">'+(s.comments||[]).map((c,i)=>'<div class="comment"><div class="comment-date">'+new Date(c.date).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})+'</div><div class="comment-text">'+esc(c.text)+'</div><button class="btn btn-danger btn-sm" style="margin-top:7px" data-action="del-comment" data-sid="'+s.id+'" data-type="series" data-idx="'+i+'">Eliminar</button></div>').join('')+'</div>'
     +'<div style="display:flex;gap:8px;margin-top:10px"><textarea class="form-textarea" id="new-comment" placeholder="Escribe un comentario..." style="flex:1;min-height:55px"></textarea><button class="btn btn-primary" data-action="add-comment" data-sid="'+s.id+'" data-type="series" style="align-self:flex-end">Añadir</button></div>'
-    +'</div>'
-    +'<div id="t-info" class="tab-pane">'
-    +'<div class="form-row" style="margin-bottom:14px"><div><div class="form-label">Géneros</div><div class="tags">'+((s.genres||[]).map(g=>'<span class="tag">'+esc(g)+'</span>').join('')||'<span style="color:var(--label3);font-size:13px">—</span>')+'</div></div>'
-    +'<div><div class="form-label">Universos</div><div class="tags">'+((s.universes||[]).map(u=>'<span class="tag">'+esc(u)+'</span>').join('')||'<span style="color:var(--label3);font-size:13px">—</span>')+'</div></div></div>'
-    +(s.synopsis?'<div class="form-label">Sinopsis</div><div style="font-size:14px;color:var(--label3);line-height:1.7;background:var(--fill3);border-radius:var(--r-md);padding:13px;margin-bottom:16px;font-weight:500">'+esc(s.synopsis)+'</div>':'')
-    +((s.awards||[]).length?'<div class="form-label">Premios</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+s.awards.map(a=>'<span class="award-tag">🏆 '+esc(a)+'</span>').join('')+'</div>':'')
-    +'<div class="divider"></div><div class="form-label">Tu puntuación global</div>'+numPickerHTML(s.id,'series',s.userRating)
     +'</div></div>';
 }
 
@@ -1637,7 +1646,13 @@ function movieDetailHTML(m){
     +'<div style="flex:1"><div class="det-title">'+esc(m.title)+'</div>'
     +'<div class="det-meta">'+(m.startYear||'?')+(m.director?' · Dir. '+esc(m.director):'')+' · <span class="'+platClass(m.platform)+'">'+esc(m.platform||'—')+'</span></div>'
     +'<div class="det-ratings">'
-    +(m.userRating?'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val">★ '+m.userRating+'</span></div>':'')
+    +'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="toggleRatingInline(\'' + m.id + '\',\'movies\')">'
+    +(m.userRating?'★ '+m.userRating:'<span style="color:var(--label3);font-size:13px">Puntuar</span>')
+    +'<span style="font-size:11px;color:var(--label3)">✏</span></span></div>'
+    +'<div id="rating-inline-'+m.id+'" style="display:none;align-items:center;gap:6px;margin-top:4px">'
+    +'<input type="number" min="1" max="10" step="1" value="'+(m.userRating||'')+'"     id="rating-inline-input-'+m.id+'" style="width:60px;padding:6px;font-size:18px;font-weight:800;text-align:center;color:var(--cin-red);background:var(--cin-red-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit">'
+    +'<button class="btn btn-primary btn-sm" data-action="rate-item-btn" data-id="'+m.id+'" data-type="movies" data-input="rating-inline-input-'+m.id+'">✓</button>'
+    +'</div>'
     +(m.imdbRating?'<span class="imdb-badge">IMDb '+m.imdbRating+'</span>':'')
     +statusBadge(m.status)+'</div></div></div></div>'
     +'<div class="det-body"><div class="det-actions">'
@@ -2440,6 +2455,52 @@ function parseAwards(str){
   return results;
 }
 
+// ── Inline rating toggle (header of detail panel) ──
+function toggleRatingInline(itemId, type){
+  const wrap = id('rating-inline-'+itemId);
+  if(!wrap) return;
+  const shown = wrap.style.display === 'flex';
+  wrap.style.display = shown ? 'none' : 'flex';
+  if(!shown){ const inp=id('rating-inline-input-'+itemId); if(inp) inp.focus(); }
+}
+
+// ── Quick rate from list: show small popover ──
+function openQuickRate(itemId, type, anchorEl){
+  // close any existing
+  const ex = id('quick-rate-pop');
+  if(ex){ ex.remove(); if(ex.dataset.for===itemId) return; }
+  const item = type==='series' ? S.series.find(s=>s.id===itemId) : S.movies.find(m=>m.id===itemId);
+  if(!item) return;
+  const pop = document.createElement('div');
+  pop.id = 'quick-rate-pop';
+  pop.dataset.for = itemId;
+  pop.style.cssText = 'position:fixed;z-index:5000;background:var(--sys-elevated);border-radius:var(--r-lg);padding:12px 14px;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:8px;border:1.5px solid var(--sep-opaque)';
+  pop.innerHTML = '<span style="font-size:13px;font-weight:700;color:var(--label2)">Nota:</span>'
+    +'<input type="number" min="1" max="10" step="1" value="'+(item.userRating||'')+'" id="qr-input" style="width:56px;padding:6px;font-size:18px;font-weight:800;text-align:center;color:var(--cin-red);background:var(--cin-red-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit">'
+    +'<span style="font-size:13px;color:var(--label3);font-weight:600">/ 10</span>'
+    +'<button class="btn btn-primary btn-sm" id="qr-save">✓</button>'
+    +'<button class="btn btn-secondary btn-sm" id="qr-cancel">✕</button>';
+  document.body.appendChild(pop);
+  // Position near anchor
+  const rect = anchorEl.getBoundingClientRect();
+  pop.style.top = (rect.bottom + 6)+'px';
+  pop.style.left = Math.min(rect.left, window.innerWidth - 220)+'px';
+  const inp = pop.querySelector('#qr-input');
+  inp.focus(); inp.select();
+  pop.querySelector('#qr-save').onclick = function(){
+    const val = parseFloat(inp.value);
+    if(val >= 1 && val <= 10){
+      if(type==='series'){ const s=S.series.find(x=>x.id===itemId); if(s){ s.userRating=val; s.updatedAt=Date.now(); } }
+      else { const m=S.movies.find(x=>x.id===itemId); if(m){ m.userRating=val; m.updatedAt=Date.now(); } }
+      save(); renderView();
+    }
+    pop.remove();
+  };
+  pop.querySelector('#qr-cancel').onclick = ()=>pop.remove();
+  inp.onkeydown = function(e){ if(e.key==='Enter') pop.querySelector('#qr-save').click(); if(e.key==='Escape') pop.remove(); };
+  setTimeout(()=>{ document.addEventListener('click', function h(e){ if(!pop.contains(e.target)){ pop.remove(); document.removeEventListener('click',h); } }); }, 100);
+}
+
 // ═══════════════════════════════════════════
 //  EVENT DELEGATION — single listener handles all clicks
 // ═══════════════════════════════════════════
@@ -2486,6 +2547,7 @@ document.addEventListener('click', function(e){
   const action=el.dataset.action;
 
   if(action==='nav'){ navigate(el.dataset.nav); return; }
+  if(action==='rate-item'){ openQuickRate(el.dataset.id, el.dataset.type, el); return; }
   if(action==='close-panel'){ closePanel(); return; }
   if(action==='toggle-filters'){
     const drawerId = el.dataset.section+'-filter-drawer';
