@@ -464,16 +464,24 @@ nav { padding: 8px 0 12px; flex: 1; }
 
 /* ── NOW WATCHING CARDS ── */
 .now-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
   gap: 10px;
   margin-bottom: 24px;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.now-grid::-webkit-scrollbar { display: none; }
 .now-card {
   background: var(--sys-elevated);
   border-radius: var(--r-lg);
   overflow: hidden;
   display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 120px;
   transition: transform 0.15s, box-shadow 0.15s;
   cursor: pointer;
   box-shadow: var(--sh-sm);
@@ -481,15 +489,15 @@ nav { padding: 8px 0 12px; flex: 1; }
 .now-card:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
 .now-card:active { transform: scale(0.98); }
 .now-poster {
-  width: 72px; min-width: 72px;
+  width: 100%; height: 90px;
   background: var(--fill3);
   display: flex; align-items: center; justify-content: center;
   font-size: 28px; overflow: hidden;
 }
 .now-poster img { width:100%; height:100%; object-fit:cover; }
-.now-body { padding: 12px 14px; flex: 1; min-width: 0; }
-.now-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
-.now-meta { font-size: 11px; color: var(--label3); margin-bottom: 8px; font-weight: 500; }
+.now-body { padding: 7px 8px; flex: 1; min-width: 0; }
+.now-title { font-size: 11px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
+.now-meta { font-size: 10px; color: var(--label3); margin-bottom: 5px; font-weight: 500; }
 .prog-bar { height: 4px; background: var(--fill2); border-radius: 4px; overflow: hidden; margin-bottom: 5px; }
 .prog-fill { height: 100%; background: linear-gradient(90deg, var(--cin-red), var(--cin-gold)); border-radius: 4px; transition: width 0.4s ease; }
 .now-ep { font-size: 11px; color: var(--label3); font-weight: 600; }
@@ -1208,7 +1216,7 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
     <button id="hamburger">☰</button>
     <div class="topbar-title" id="topbar-title"></div>
     <div class="search-wrap"><span>🔍</span><input type="text" id="search-input" placeholder="Buscar..."></div>
-    <button class="btn btn-primary" id="btn-add" style="display:none">+ Añadir</button>
+    <button class="btn btn-primary" id="btn-add" style="display:inline-flex">+ Añadir</button>
     <button id="btn-refresh" title="Actualizar">↻</button>
   </div>
   <div id="content">
@@ -1341,6 +1349,7 @@ const VIEW_TITLES={dashboard:'',watching:'Viendo ahora',series:'Mis series','pen
 function navigate(view){
   try{
   S.view=view;
+  try{ sessionStorage.setItem('cl_view', view); }catch(e){}
   if(typeof closeSidebar==='function') closeSidebar();
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
@@ -1746,10 +1755,11 @@ function epRowHTML(s,t,e){
 
 function numPickerHTML(itemId, type, current){
   const r=current||'';
+  const opts=[1,2,3,4,5,6,7,8,9,10].map(n=>'<option value="'+n+'"'+(n==r?' selected':'')+'>'+n+'</option>').join('');
   return '<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'
-    +'<input type="number" class="num-picker-input" min="1" max="10" step="1" value="'+r+'" placeholder="—" '
-    +'id="rate-input-'+itemId+'" style="width:70px;padding:8px 10px;font-size:20px;font-weight:800;text-align:center;'
+    +'<select class="num-picker-input" id="rate-input-'+itemId+'" style="padding:8px 12px;font-size:20px;font-weight:800;'
     +'color:var(--cin-red);background:var(--cin-red-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit">'
+    +'<option value="">—</option>'+opts+'</select>'
     +'<span style="font-size:15px;color:var(--label3);font-weight:600">/ 10</span>'
     +'<button type="button" class="btn btn-primary btn-sm" id="rate-btn-'+itemId+'" '
     +'data-action="rate-item-btn" data-id="'+itemId+'" data-type="'+type+'" data-input="rate-input-'+itemId+'">Guardar</button>'
@@ -2461,7 +2471,7 @@ function toggleRatingInline(itemId, type){
   if(!wrap) return;
   const shown = wrap.style.display === 'flex';
   wrap.style.display = shown ? 'none' : 'flex';
-  if(!shown){ const inp=id('rating-inline-input-'+itemId); if(inp) inp.focus(); }
+  if(!shown){ const inp=id('rating-inline-input-'+itemId); if(inp){ inp.focus(); } }
 }
 
 // ── Quick rate from list: show small popover ──
@@ -2475,8 +2485,9 @@ function openQuickRate(itemId, type, anchorEl){
   pop.id = 'quick-rate-pop';
   pop.dataset.for = itemId;
   pop.style.cssText = 'position:fixed;z-index:5000;background:var(--sys-elevated);border-radius:var(--r-lg);padding:12px 14px;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:8px;border:1.5px solid var(--sep-opaque)';
-  pop.innerHTML = '<span style="font-size:13px;font-weight:700;color:var(--label2)">Nota:</span>'
-    +'<input type="number" min="1" max="10" step="1" value="'+(item.userRating||'')+'" id="qr-input" style="width:56px;padding:6px;font-size:18px;font-weight:800;text-align:center;color:var(--cin-red);background:var(--cin-red-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit">'
+  var opts=[1,2,3,4,5,6,7,8,9,10].map(n=>'<option value="'+n+'"'+(n==item.userRating?' selected':'')+'>'+n+'</option>').join('');
+  pop.innerHTML = '<span style="font-size:13px;font-weight:700;color:var(--label2)">★ Nota:</span>'
+    +'<select id="qr-input" style="padding:6px 10px;font-size:16px;font-weight:800;color:var(--cin-red);background:var(--cin-red-bg);border:none;border-radius:var(--r-md);outline:none;font-family:inherit"><option value="">—</option>'+opts+'</select>'
     +'<span style="font-size:13px;color:var(--label3);font-weight:600">/ 10</span>'
     +'<button class="btn btn-primary btn-sm" id="qr-save">✓</button>'
     +'<button class="btn btn-secondary btn-sm" id="qr-cancel">✕</button>';
@@ -2488,7 +2499,7 @@ function openQuickRate(itemId, type, anchorEl){
   const inp = pop.querySelector('#qr-input');
   inp.focus(); inp.select();
   pop.querySelector('#qr-save').onclick = function(){
-    const val = parseFloat(inp.value);
+    const val = parseFloat(inp.value||'0');
     if(val >= 1 && val <= 10){
       if(type==='series'){ const s=S.series.find(x=>x.id===itemId); if(s){ s.userRating=val; s.updatedAt=Date.now(); } }
       else { const m=S.movies.find(x=>x.id===itemId); if(m){ m.userRating=val; m.updatedAt=Date.now(); } }
@@ -2515,6 +2526,8 @@ document.addEventListener('click', function(e){
 
   // Sidebar overlay
   if(e.target.id==='sidebar-overlay'){ closeSidebar(); return; }
+  // Close sidebar when clicking on main content area while sidebar is open
+  if(e.target.closest('#main') && id('sidebar') && id('sidebar').classList.contains('open')){ closeSidebar(); }
   if(e.target.id==='hamburger'){ toggleSidebar(); return; }
 
   // Panel overlay
@@ -2603,6 +2616,7 @@ document.addEventListener('click', function(e){
     const t=s.seasons.find(x=>x.id===el.dataset.tid);
     const ep=t.episodes.find(x=>x.id===el.dataset.eid);
     ep.watched=!ep.watched; if(ep.watched) ep.current=false;
+    s.updatedAt=Date.now();
     save();
     // Update just this checkbox in-place, no panel reload
     const cls=ep.watched?'done':(ep.current?'cur':'');
@@ -2622,6 +2636,7 @@ document.addEventListener('click', function(e){
     const t=s.seasons.find(x=>x.id===el.dataset.tid);
     const allWatched=t.episodes.length>0&&t.episodes.every(e=>e.watched);
     t.episodes.forEach(e=>{ e.watched=!allWatched; if(!allWatched) e.current=false; });
+    s.updatedAt=Date.now();
     save();
     // Update all checkboxes in this season in-place
     const acc=document.getElementById('sacc-'+t.id);
@@ -3031,7 +3046,10 @@ id('btn-import').addEventListener('change', function(){
     _renderUserBtn(user);
     window._sbLoad().then(function() {
       updateBadges();
-      renderDashboard();
+      var savedView = '';
+      try{ savedView = sessionStorage.getItem('cl_view')||''; }catch(e){}
+      if(savedView && savedView !== 'dashboard') navigate(savedView);
+      else renderDashboard();
     });
   }
 
