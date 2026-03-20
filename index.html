@@ -1180,14 +1180,14 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
   </div>
   <nav>
     <div class="nav-sec">General</div>
-    <div class="nav-item active" id="nav-dashboard"><span class="ico">🏠</span>Dashboard</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="navigate('dashboard')"><span class="ico">🏠</span>Dashboard</div>
     <div class="nav-sec">Series</div>
-    <div class="nav-item" id="nav-watching"><span class="ico">▶️</span>Viendo ahora<span class="nav-badge" id="b-watching">0</span></div>
-    <div class="nav-item" id="nav-series"><span class="ico">📺</span>Mis series<span class="nav-badge" id="b-series">0</span></div>
-    <div class="nav-item" id="nav-pending-series"><span class="ico">🕐</span>Pendientes<span class="nav-badge" id="b-ps">0</span></div>
+    <div class="nav-item" id="nav-watching" onclick="navigate('watching')"><span class="ico">▶️</span>Viendo ahora<span class="nav-badge" id="b-watching">0</span></div>
+    <div class="nav-item" id="nav-series" onclick="navigate('series')"><span class="ico">📺</span>Mis series<span class="nav-badge" id="b-series">0</span></div>
+    <div class="nav-item" id="nav-pending-series" onclick="navigate('pending-series')"><span class="ico">📺</span>Pendientes<span class="nav-badge" id="b-ps">0</span></div>
     <div class="nav-sec">Películas</div>
-    <div class="nav-item" id="nav-movies"><span class="ico">🎬</span>Mis películas<span class="nav-badge" id="b-movies">0</span></div>
-    <div class="nav-item" id="nav-pending-movies"><span class="ico">🕐</span>Pendientes<span class="nav-badge" id="b-pm">0</span></div>
+    <div class="nav-item" id="nav-movies" onclick="navigate('movies')"><span class="ico">🎬</span>Mis películas<span class="nav-badge" id="b-movies">0</span></div>
+    <div class="nav-item" id="nav-pending-movies" onclick="navigate('pending-movies')"><span class="ico">🕐</span>Pendientes<span class="nav-badge" id="b-pm">0</span></div>
   </nav>
   <div class="sidebar-foot">
     <div class="stat-mini">
@@ -1339,6 +1339,7 @@ function seasonAvg(t){
 // ═══════════════════════════════════════════
 const VIEW_TITLES={dashboard:'Dashboard',watching:'Viendo ahora',series:'Mis series','pending-series':'Series pendientes',movies:'Mis películas','pending-movies':'Películas pendientes'};
 function navigate(view){
+  try{
   S.view=view;
   if(typeof closeSidebar==='function') closeSidebar();
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
@@ -1348,6 +1349,7 @@ function navigate(view){
   const tb=id('topbar-title'); if(tb) tb.textContent=VIEW_TITLES[view]||view;
   const ba=id('btn-add'); if(ba) ba.style.display=['series','movies','pending-series','pending-movies'].includes(view)?'inline-flex':'none';
   renderView();
+  }catch(err){console.error('navigate error:',err); showToast('Error nav: '+err.message);}
 }
 
 // ═══════════════════════════════════════════
@@ -1361,12 +1363,17 @@ function closeSidebar(){id('sidebar').classList.remove('open');id('sidebar-overl
 // ═══════════════════════════════════════════
 function renderView(){
   const v=S.view;
-  if(v==='dashboard') renderDashboard();
-  else if(v==='watching') renderWatching();
-  else if(v==='series') renderSeriesGrid();
-  else if(v==='pending-series') renderPendingList('series');
-  else if(v==='movies') renderMoviesGrid();
-  else if(v==='pending-movies') renderPendingList('movies');
+  try{
+    if(v==='dashboard') renderDashboard();
+    else if(v==='watching') renderWatching();
+    else if(v==='series') renderSeriesGrid();
+    else if(v==='pending-series') renderPendingList('series');
+    else if(v==='movies') renderMoviesGrid();
+    else if(v==='pending-movies') renderPendingList('movies');
+  }catch(err){
+    console.error('renderView('+v+') error:',err);
+    showToast('Error render: '+err.message);
+  }
 }
 
 function renderDashboard(){
@@ -2432,6 +2439,7 @@ function parseAwards(str){
 //  EVENT DELEGATION — single listener handles all clicks
 // ═══════════════════════════════════════════
 document.addEventListener('click', function(e){
+  try{
   // ── Close panel button — checked FIRST before anything else ──
   if(e.target.closest('.det-close')){ closePanel(); return; }
 
@@ -2622,6 +2630,7 @@ document.addEventListener('click', function(e){
   if(action==='toggle-season'){
     const acc=id('sacc-'+el.dataset.tid); if(acc) acc.classList.toggle('open'); return;
   }
+  }catch(err){console.error('Click error:',err);}
 });
 
 // Tab switching
@@ -2880,72 +2889,70 @@ id('btn-import').addEventListener('change', function(){
   // ── Load ──
   window._sbLoad = async function() {
     if (!window._currentUser) { S.series=[]; S.movies=[]; return; }
+
+    // Read localStorage FIRST before anything else
+    var localSeries = [], localMovies = [], hasLocal = false;
+    try {
+      var localRaw = localStorage.getItem('cinelog');
+      if (localRaw) {
+        var lp = JSON.parse(localRaw);
+        localSeries = lp.series || [];
+        localMovies = lp.movies || [];
+        hasLocal = localSeries.length > 0 || localMovies.length > 0;
+      }
+    } catch(e) {}
+
     try {
       var { data, error } = await sb.from('user_data')
         .select('series,movies')
         .eq('id', window._currentUser.id)
         .single();
-      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+      if (error && error.code !== 'PGRST116') throw error;
 
-      // Check if there are local data to migrate (regardless of whether cloud has data)
-      var localRaw = null;
-      try { localRaw = localStorage.getItem('cinelog'); } catch(e) {}
+      var cloudSeries = (data && data.series) ? data.series : [];
+      var cloudMovies = (data && data.movies) ? data.movies : [];
+      var hasCloud = cloudSeries.length > 0 || cloudMovies.length > 0;
 
-      if (data && ((data.series||[]).length || (data.movies||[]).length)) {
-        // Cloud has data — use it
-        S.series = data.series || [];
-        S.movies = data.movies || [];
-        // If local also has data, offer merge or just silently drop local
-        if (localRaw) {
-          try { localStorage.removeItem('cinelog'); } catch(e) {}
-        }
-      } else if (localRaw) {
-        // Cloud empty/missing — migrate from localStorage
+      if (hasCloud && hasLocal) {
+        // Ambos tienen datos: la nube gana (ya estaba sincronizado antes)
+        S.series = cloudSeries;
+        S.movies = cloudMovies;
+        try { localStorage.removeItem('cinelog'); } catch(e) {}
+      } else if (hasLocal) {
+        // Solo local tiene datos: migrar a la nube
+        S.series = localSeries;
+        S.movies = localMovies;
         try {
-          var p = JSON.parse(localRaw);
-          if ((p.series||[]).length || (p.movies||[]).length) {
-            S.series = p.series||[];
-            S.movies = p.movies||[];
-            // Save to cloud first, then remove local only on success
-            try {
-              var { error: saveErr } = await sb.from('user_data').upsert({
-                id: window._currentUser.id,
-                series: S.series,
-                movies: S.movies,
-                updated_at: new Date().toISOString()
-              });
-              if (!saveErr) {
-                localStorage.removeItem('cinelog');
-                showToast('✅ Datos migrados a la nube');
-              } else {
-                showToast('⚠️ Datos locales cargados (error al sincronizar)');
-              }
-            } catch(e) {
-              showToast('⚠️ Datos locales cargados (sin conexión)');
-            }
+          var { error: saveErr } = await sb.from('user_data').upsert({
+            id: window._currentUser.id,
+            series: S.series,
+            movies: S.movies,
+            updated_at: new Date().toISOString()
+          });
+          if (!saveErr) {
+            try { localStorage.removeItem('cinelog'); } catch(e) {}
+            showToast('✅ Datos locales migrados a la nube');
           } else {
-            S.series = []; S.movies = [];
+            showToast('⚠️ Datos locales cargados (fallo al guardar en nube)');
           }
         } catch(e) {
-          S.series = []; S.movies = [];
+          showToast('⚠️ Datos locales cargados (sin conexión)');
         }
+      } else if (hasCloud) {
+        S.series = cloudSeries;
+        S.movies = cloudMovies;
       } else {
         S.series = []; S.movies = [];
       }
     } catch(e) {
       console.error('Load error', e.message);
-      // Fallback: try localStorage if cloud fails
-      try {
-        var raw = localStorage.getItem('cinelog');
-        if (raw) {
-          var p = JSON.parse(raw);
-          S.series = p.series||[];
-          S.movies = p.movies||[];
-          showToast('⚠️ Modo sin conexión — usando datos locales');
-          return;
-        }
-      } catch(e2) {}
-      S.series=[]; S.movies=[];
+      if (hasLocal) {
+        S.series = localSeries;
+        S.movies = localMovies;
+        showToast('⚠️ Sin conexión — usando datos locales');
+      } else {
+        S.series = []; S.movies = [];
+      }
     }
   };
 
