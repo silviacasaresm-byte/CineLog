@@ -3053,7 +3053,7 @@ id('btn-import').addEventListener('change', function(){
     btn.textContent = '⏳...'; btn.disabled = true;
     var result = _mode === 'login'
       ? await sb.auth.signInWithPassword({ email: email, password: pass })
-      : await sb.auth.signUp({ email: email, password: pass });
+      : await sb.auth.signUp({ email: email, password: pass, options: { emailRedirectTo: 'https://silviacasaresm-byte.github.io/CineLog/' } });
     if (result.error) {
       btn.textContent = _mode === 'login' ? 'Entrar' : 'Crear cuenta';
       btn.disabled = false;
