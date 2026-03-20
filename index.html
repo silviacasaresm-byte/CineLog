@@ -1278,6 +1278,8 @@ let _activeMoviesFilter = null;
 let _seriesView = 'list';   // 'grid' | 'list'
 let _watchingView = 'list';
 let _moviesView = 'list';
+let _activePendingSeriesFilter = null;
+let _activePendingMoviesFilter = null;
 let _seriesSort = 'recent';   // 'recent' | 'alpha' | 'rating' | 'platform'
 let _moviesSort = 'recent';
 
@@ -1356,7 +1358,7 @@ function navigate(view){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   const nav=id('nav-'+view); if(nav) nav.classList.add('active');
   const vEl=id('view-'+view); if(vEl) vEl.classList.add('active');
-  const tb=id('topbar-title'); if(tb) tb.textContent=VIEW_TITLES[view]||view;
+  const tb=id('topbar-title'); if(tb) tb.textContent=VIEW_TITLES[view]!==undefined?VIEW_TITLES[view]:(view==='dashboard'?'':view);
   const ba=id('btn-add'); if(ba) ba.style.display='inline-flex';
   renderView();
   }catch(err){console.error('navigate error:',err); showToast('Error nav: '+err.message);}
@@ -1396,7 +1398,8 @@ function renderDashboard(){
     <div class="stat-card" data-action="nav" data-nav="watching"><div class="stat-icon">🍿</div><div class="stat-val">${nw.length}</div><div class="stat-lbl">Viendo</div></div>
     <div class="stat-card" data-action="nav" data-nav="series"><div class="stat-icon">✅</div><div class="stat-val">${eps}</div><div class="stat-lbl">Eps vistos</div></div>
     <div class="stat-card" data-action="nav" data-nav="pending-series"><div class="stat-icon">🕐</div><div class="stat-val">${S.series.filter(s=>s.status==='pending').length+S.movies.filter(m=>m.status==='pending').length}</div><div class="stat-lbl">Pendientes</div></div>`;
-  if(id('now-list')) id('now-list').innerHTML = nw.length ? nw.map(s=>nowCardHTML(s)).join('') : '<div style="color:var(--label3);font-size:14px;font-weight:700">Nada en reproducción.</div>';
+  var nw_sorted=nw.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  if(id('now-list')) id('now-list').innerHTML = nw_sorted.length ? nw_sorted.map(s=>nowCardHTML(s)).join('') : '<div style="color:var(--label3);font-size:14px;font-weight:700">Nada en reproducción.</div>';
   const recent=[...S.series.filter(s=>s.status!=='pending'),...S.movies.filter(m=>m.status!=='pending')].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,5);
   if(id('recent-list')) id('recent-list').innerHTML=recent.length?recent.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◈</div><div class="empty-title">Colección vacía</div><div class="empty-sub">Añade tu primera serie o película.</div></div>';
 }
@@ -1459,12 +1462,18 @@ function toolbarHTML(viewMode, sortKey, section, hasActiveFilter){
 
 function listItemHTML(item, type){
   const avg = type==='series' ? avgRating(item) : item.userRating;
+  let total=0, watched=0;
+  if(type==='series'){ (item.seasons||[]).forEach(t=>(t.episodes||[]).forEach(e=>{total++;if(e.watched)watched++;})); }
+  const pct = total ? Math.round(watched/total*100) : 0;
+  const showProg = type==='series' && total>0;
   return '<div class="list-item" data-id="'+item.id+'" data-type="'+type+'">'
     +'<div class="list-thumb">'+posterHTML(item)+'</div>'
     +'<div class="list-info">'
     +'<div class="list-title">'+esc(item.title)+'</div>'
     +'<div class="list-meta">'+(item.startYear||'?')+(item.endYear?'–'+item.endYear:'')+(item.genres&&item.genres.length?' · '+item.genres.slice(0,2).join(', '):'')+'</div>'
     +statusBadge(item.status)
+    +(showProg?'<div class="prog-bar" style="margin-top:5px;margin-bottom:0"><div class="prog-fill" style="width:'+pct+'%"></div></div>'
+              +'<div style="font-size:9px;color:var(--label3);font-weight:700;margin-top:2px">'+watched+'/'+total+' · '+pct+'%</div>':'')
     +'</div>'
     +'<div class="list-right" style="gap:6px">'
     +'<div class="list-rating" data-action="rate-item" data-id="'+item.id+'" data-type="'+type+'" style="cursor:pointer;font-size:15px;font-weight:800;color:'+(avg?'var(--cin-red)':'var(--label3)')+';min-width:36px;text-align:center" title="Cambiar nota">'+(avg?'★ '+avg:'★ —')+'</div>'
@@ -1540,10 +1549,24 @@ function renderMoviesGrid(q=''){
 }
 
 function renderPendingList(type){
-  const arr=type==='series'?S.series.filter(s=>s.status==='pending'):S.movies.filter(m=>m.status==='pending');
+  const activeFilter = type==='series' ? _activePendingSeriesFilter : _activePendingMoviesFilter;
+  let arr=(type==='series'?S.series.filter(s=>s.status==='pending'):S.movies.filter(m=>m.status==='pending'))
+    .filter(i=>!activeFilter||filterMatch(i,activeFilter));
+
+  // Build filter chips
+  const all = type==='series'?S.series.filter(s=>s.status==='pending'):S.movies.filter(m=>m.status==='pending');
+  const genres=new Set(), platforms=new Set(), universes=new Set();
+  all.forEach(i=>{(i.genres||[]).forEach(g=>genres.add(g));if(i.platform)platforms.add(i.platform);(i.universes||[]).forEach(u=>universes.add(u));});
+  let chips='';
+  if(genres.size) chips+='<span class="filter-lbl">Género:</span>'+[...genres].map(g=>'<span class="chip'+(matchesFilter(activeFilter,'genre',g)?' active':'')+'" data-pending-type="'+type+'" data-type="genre" data-val="'+esc(g)+'">'+esc(g)+'</span>').join('');
+  if(platforms.size) chips+='<span class="filter-lbl" style="margin-left:8px">Plataforma:</span>'+[...platforms].map(p=>'<span class="chip'+(matchesFilter(activeFilter,'platform',p)?' active':'')+'" data-pending-type="'+type+'" data-type="platform" data-val="'+esc(p)+'">'+esc(p)+'</span>').join('');
+  if(universes.size) chips+='<span class="filter-lbl" style="margin-left:8px">Universo:</span>'+[...universes].map(u=>'<span class="chip'+(matchesFilter(activeFilter,'universe',u)?' active':'')+'" data-pending-type="'+type+'" data-type="universe" data-val="'+esc(u)+'">'+esc(u)+'</span>').join('');
+
+  const filterBar = chips ? '<div class="filter-bar" style="margin-bottom:12px">'+chips+'</div>' : '';
+
   const target=type==='series'?'ps-list':'pm-list';
   const tEl=id(target); if(!tEl) return;
-  tEl.innerHTML=arr.length?arr.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◷</div><div class="empty-title">Sin pendientes</div></div>';
+  tEl.innerHTML=filterBar+(arr.length?arr.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◷</div><div class="empty-title">Sin pendientes</div></div>');
 }
 
 function filterMatch(item,f){
@@ -2520,12 +2543,16 @@ function openQuickRate(itemId, type, anchorEl){
   inp.focus(); inp.select();
   pop.querySelector('#qr-save').onclick = function(){
     const val = parseFloat(inp.value||'0');
-    if(val >= 1 && val <= 10){
-      if(type==='series'){ const s=S.series.find(x=>x.id===itemId); if(s){ s.userRating=val; s.updatedAt=Date.now(); } }
-      else { const m=S.movies.find(x=>x.id===itemId); if(m){ m.userRating=val; m.updatedAt=Date.now(); } }
-      save(); renderView();
-    }
     pop.remove();
+    if(val >= 1 && val <= 10){
+      saveItemRating(itemId, type, String(val));
+      // Update list-item rating display in-place without full re-render
+      const listEl = document.querySelector('.list-item[data-id="'+itemId+'"]');
+      if(listEl){
+        const ratingEl = listEl.querySelector('[data-action="rate-item"]');
+        if(ratingEl){ ratingEl.textContent='★ '+val; ratingEl.style.color='var(--cin-red)'; }
+      }
+    }
   };
   pop.querySelector('#qr-cancel').onclick = ()=>pop.remove();
   inp.onkeydown = function(e){ if(e.key==='Enter') pop.querySelector('#qr-save').click(); if(e.key==='Escape') pop.remove(); };
@@ -2754,6 +2781,19 @@ document.addEventListener('click',function(e){
   const chip=e.target.closest('.chip');
   if(!chip) return;
   const type=chip.dataset.type, val=chip.dataset.val;
+  // Pending list filters
+  if(chip.dataset.pendingType){
+    const pt=chip.dataset.pendingType;
+    if(pt==='series'){
+      if(_activePendingSeriesFilter&&_activePendingSeriesFilter.type===type&&_activePendingSeriesFilter.val===val) _activePendingSeriesFilter=null;
+      else _activePendingSeriesFilter={type,val};
+      renderPendingList('series'); return;
+    } else {
+      if(_activePendingMoviesFilter&&_activePendingMoviesFilter.type===type&&_activePendingMoviesFilter.val===val) _activePendingMoviesFilter=null;
+      else _activePendingMoviesFilter={type,val};
+      renderPendingList('movies'); return;
+    }
+  }
   if(S.view==='series'){
     if(_activeSeriesFilter&&_activeSeriesFilter.type===type&&_activeSeriesFilter.val===val) _activeSeriesFilter=null;
     else _activeSeriesFilter={type,val};
