@@ -1116,6 +1116,12 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--sep-opaque)}
 .btn-google{width:100%;padding:12px;border-radius:var(--r-md);background:white;border:1.5px solid var(--sep-opaque);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:var(--sh-sm);transition:box-shadow .15s}
 .btn-google:hover{box-shadow:var(--sh-md)}
+.pass-wrap{position:relative;margin-bottom:8px}
+.pass-wrap .login-input{margin-bottom:0;padding-right:44px;width:100%;box-sizing:border-box}
+.btn-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:var(--label3);font-size:18px;line-height:1;display:flex;align-items:center}
+.btn-eye:hover{color:var(--label)}
+.btn-back-login{background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--label3);padding:8px 0 0;width:100%;text-align:center;transition:color .15s}
+.btn-back-login:hover{color:var(--cin-red)}
 #login-error{font-size:12px;font-weight:700;color:var(--cin-red);margin-top:10px;min-height:18px}
 .login-spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--fill2);border-top-color:var(--cin-red);animation:spin .7s linear infinite;margin:16px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -1146,10 +1152,17 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
         <button class="login-tab" id="tab-register">Registrarse</button>
       </div>
       <input class="login-input" type="email" id="auth-email" placeholder="Email" autocomplete="email">
-      <input class="login-input" type="password" id="auth-password" placeholder="Contraseña" autocomplete="current-password">
-      <input class="login-input" type="password" id="auth-password2" placeholder="Repetir contraseña" style="display:none" autocomplete="new-password">
+      <div class="pass-wrap">
+        <input class="login-input" type="password" id="auth-password" placeholder="Contraseña" autocomplete="current-password">
+        <button type="button" class="btn-eye" id="btn-eye1" title="Mostrar/ocultar">👁</button>
+      </div>
+      <div class="pass-wrap" id="wrap-password2" style="display:none">
+        <input class="login-input" type="password" id="auth-password2" placeholder="Repetir contraseña" autocomplete="new-password">
+        <button type="button" class="btn-eye" id="btn-eye2" title="Mostrar/ocultar">👁</button>
+      </div>
       <button id="btn-submit-auth">Entrar</button>
       <div id="login-error"></div>
+      <button type="button" class="btn-back-login" id="btn-back-login" style="display:none">← Volver atrás</button>
     </div>
   </div>
 </div>
@@ -2957,14 +2970,6 @@ id('btn-import').addEventListener('change', function(){
   }
 
   // ── Google login ──
-  document.getElementById('btn-google-login').onclick = async function() {
-    document.getElementById('login-error').textContent = '';
-    var { error } = await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.href }
-    });
-    if (error) document.getElementById('login-error').textContent = 'Error: ' + error.message;
-  };
 
   // ── Tab toggle ──
   var _mode = 'login';
@@ -2972,7 +2977,7 @@ id('btn-import').addEventListener('change', function(){
     _mode = 'login';
     document.getElementById('tab-login').classList.add('active');
     document.getElementById('tab-register').classList.remove('active');
-    document.getElementById('auth-password2').style.display = 'none';
+    document.getElementById('wrap-password2').style.display = 'none';
     document.getElementById('btn-submit-auth').textContent = 'Entrar';
     document.getElementById('login-error').textContent = '';
   };
@@ -2980,7 +2985,7 @@ id('btn-import').addEventListener('change', function(){
     _mode = 'register';
     document.getElementById('tab-register').classList.add('active');
     document.getElementById('tab-login').classList.remove('active');
-    document.getElementById('auth-password2').style.display = 'block';
+    document.getElementById('wrap-password2').style.display = 'flex';
     document.getElementById('btn-submit-auth').textContent = 'Crear cuenta';
     document.getElementById('login-error').textContent = '';
   };
@@ -3021,6 +3026,47 @@ id('btn-import').addEventListener('change', function(){
     var el = document.getElementById(eid);
     if (el) el.onkeydown = function(e) { if (e.key === 'Enter') doAuth(); };
   });
+
+  // ── Password eye toggle ──
+  function makeEyeToggle(eyeId, inputId) {
+    var btn = document.getElementById(eyeId);
+    var inp = document.getElementById(inputId);
+    if (!btn || !inp) return;
+    btn.onclick = function() {
+      var shown = inp.type === 'text';
+      inp.type = shown ? 'password' : 'text';
+      btn.textContent = shown ? '👁' : '🙈';
+    };
+  }
+  makeEyeToggle('btn-eye1', 'auth-password');
+  makeEyeToggle('btn-eye2', 'auth-password2');
+
+  // ── Back button (after Google redirect loading state) ──
+  var _googlePending = false;
+  var _origGoogleClick = document.getElementById('btn-google-login').onclick;
+  document.getElementById('btn-google-login').onclick = async function() {
+    _googlePending = true;
+    document.getElementById('btn-back-login').style.display = 'block';
+    document.getElementById('login-error').textContent = '';
+    var { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) {
+      _googlePending = false;
+      document.getElementById('btn-back-login').style.display = 'none';
+      document.getElementById('login-error').textContent = 'Error: ' + error.message;
+    }
+  };
+  document.getElementById('btn-back-login').onclick = function() {
+    _googlePending = false;
+    document.getElementById('btn-back-login').style.display = 'none';
+    document.getElementById('login-error').textContent = '';
+    // Clear hash in URL to avoid token loops
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  };
 
 })();
 </script>
