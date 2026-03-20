@@ -1355,8 +1355,8 @@ function navigate(view){
 // ═══════════════════════════════════════════
 //  SIDEBAR MOBILE
 // ═══════════════════════════════════════════
-function toggleSidebar(){id('sidebar').classList.toggle('open');id('sidebar-overlay').classList.toggle('open')}
-function closeSidebar(){id('sidebar').classList.remove('open');id('sidebar-overlay').classList.remove('open')}
+function toggleSidebar(){const s=id('sidebar'),o=id('sidebar-overlay');if(s)s.classList.toggle('open');if(o)o.classList.toggle('open');}
+function closeSidebar(){const s=id('sidebar'),o=id('sidebar-overlay');if(s)s.classList.remove('open');if(o)o.classList.remove('open');}
 
 // ═══════════════════════════════════════════
 //  RENDER VIEWS
@@ -1380,20 +1380,20 @@ function renderDashboard(){
   const ns=S.series.filter(s=>s.status!=='pending'), nm=S.movies.filter(m=>m.status!=='pending');
   const nw=S.series.filter(s=>s.status==='watching');
   let eps=0; S.series.forEach(s=>(s.seasons||[]).forEach(t=>(t.episodes||[]).forEach(e=>{if(e.watched)eps++;})));
-  id('dash-stats').innerHTML=`
+  if(id('dash-stats')) id('dash-stats').innerHTML=`
     <div class="stat-card" data-action="nav" data-nav="series"><div class="stat-icon">📺</div><div class="stat-val">${ns.length}</div><div class="stat-lbl">Series</div></div>
     <div class="stat-card" data-action="nav" data-nav="movies"><div class="stat-icon">🎬</div><div class="stat-val">${nm.length}</div><div class="stat-lbl">Películas</div></div>
     <div class="stat-card" data-action="nav" data-nav="watching"><div class="stat-icon">🍿</div><div class="stat-val">${nw.length}</div><div class="stat-lbl">Viendo</div></div>
     <div class="stat-card" data-action="nav" data-nav="series"><div class="stat-icon">✅</div><div class="stat-val">${eps}</div><div class="stat-lbl">Eps vistos</div></div>
     <div class="stat-card" data-action="nav" data-nav="pending-series"><div class="stat-icon">🕐</div><div class="stat-val">${S.series.filter(s=>s.status==='pending').length+S.movies.filter(m=>m.status==='pending').length}</div><div class="stat-lbl">Pendientes</div></div>`;
-  id('now-list').innerHTML = nw.length ? nw.map(s=>nowCardHTML(s)).join('') : '<div style="color:var(--label3);font-size:14px;font-weight:700">Nada en reproducción.</div>';
+  if(id('now-list')) id('now-list').innerHTML = nw.length ? nw.map(s=>nowCardHTML(s)).join('') : '<div style="color:var(--label3);font-size:14px;font-weight:700">Nada en reproducción.</div>';
   const recent=[...S.series.filter(s=>s.status!=='pending'),...S.movies.filter(m=>m.status!=='pending')].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,5);
-  id('recent-list').innerHTML=recent.length?recent.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◈</div><div class="empty-title">Colección vacía</div><div class="empty-sub">Añade tu primera serie o película.</div></div>';
+  if(id('recent-list')) id('recent-list').innerHTML=recent.length?recent.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◈</div><div class="empty-title">Colección vacía</div><div class="empty-sub">Añade tu primera serie o película.</div></div>';
 }
 
 function renderWatching(){
   const nw=S.series.filter(s=>s.status==='watching');
-  id('watching-grid').innerHTML=nw.length?nw.map(s=>nowCardHTML(s)).join(''):'<div class="empty" style="grid-column:1/-1"><div class="empty-ico">▶</div><div class="empty-title">Nada en reproducción</div></div>';
+  if(id('watching-grid')) id('watching-grid').innerHTML=nw.length?nw.map(s=>nowCardHTML(s)).join(''):'<div class="empty" style="grid-column:1/-1"><div class="empty-ico">▶</div><div class="empty-title">Nada en reproducción</div></div>';
 }
 
 function sortItems(items, sortKey, type){
@@ -1456,13 +1456,14 @@ function renderSeriesGrid(q=''){
   chips+=['watching','finished','dropped'].map(s=>'<span class="chip'+(matchesFilter(_activeSeriesFilter,'status',s)?' active':'')+'" data-type="status" data-val="'+s+'">'+(s==='watching'?'▶ Viendo':s==='finished'?'✓ Fin':'✕ Aband.')+'</span>').join('');
   // Collapsible filter drawer
   const drawerOpen = id('series-filter-drawer')?.open || !!_activeSeriesFilter;
-  id('series-filters').innerHTML='<details id="series-filter-drawer" class="filter-drawer"'+(drawerOpen?' open':'')+'>'
+  if(id('series-filters')) id('series-filters').innerHTML='<details id="series-filter-drawer" class="filter-drawer"'+(drawerOpen?' open':'')+'>'
     +'<summary class="filter-drawer-summary" style="display:none"></summary>'
     +'<div class="filter-bar" style="margin-bottom:0;padding:10px 0 4px">'+chips+'</div></details>';
 
-  id('series-toolbar').innerHTML=toolbarHTML(_seriesView, _seriesSort, 'series', !!_activeSeriesFilter);
+  if(id('series-toolbar')) id('series-toolbar').innerHTML=toolbarHTML(_seriesView, _seriesSort, 'series', !!_activeSeriesFilter);
 
   const empty='<div class="empty"><div class="empty-ico">◉</div><div class="empty-title">Sin series</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  if(!id('series-grid')) return;
   if(_seriesView==='grid'){
     id('series-grid').className='media-grid';
     id('series-grid').innerHTML=items.length?items.map(s=>mediaCardHTML(s,'series')).join(''):empty;
@@ -1487,13 +1488,14 @@ function renderMoviesGrid(q=''){
   if(universes.size) chips+='<span class="filter-lbl" style="margin-left:8px">Universo:</span>'+[...universes].map(u=>'<span class="chip'+(matchesFilter(_activeMoviesFilter,'universe',u)?' active':'')+'" data-type="universe" data-val="'+esc(u)+'">'+esc(u)+'</span>').join('');
   if(platforms.size) chips+='<span class="filter-lbl" style="margin-left:8px">Plataforma:</span>'+[...platforms].map(p=>'<span class="chip'+(matchesFilter(_activeMoviesFilter,'platform',p)?' active':'')+'" data-type="platform" data-val="'+esc(p)+'">'+esc(p)+'</span>').join('');
   const drawerOpen = id('movies-filter-drawer')?.open || !!_activeMoviesFilter;
-  id('movies-filters').innerHTML='<details id="movies-filter-drawer" class="filter-drawer"'+(drawerOpen?' open':'')+'>'
+  if(id('movies-filters')) id('movies-filters').innerHTML='<details id="movies-filter-drawer" class="filter-drawer"'+(drawerOpen?' open':'')+'>'
     +'<summary class="filter-drawer-summary" style="display:none"></summary>'
     +'<div class="filter-bar" style="margin-bottom:0;padding:10px 0 4px">'+chips+'</div></details>';
 
-  id('movies-toolbar').innerHTML=toolbarHTML(_moviesView, _moviesSort, 'movies', !!_activeMoviesFilter);
+  if(id('movies-toolbar')) id('movies-toolbar').innerHTML=toolbarHTML(_moviesView, _moviesSort, 'movies', !!_activeMoviesFilter);
 
   const empty='<div class="empty"><div class="empty-ico">◈</div><div class="empty-title">Sin películas</div><div class="empty-sub">Pulsa "+ Añadir" para empezar.</div></div>';
+  if(!id('movies-grid')) return;
   if(_moviesView==='grid'){
     id('movies-grid').className='media-grid';
     id('movies-grid').innerHTML=items.length?items.map(m=>mediaCardHTML(m,'movies')).join(''):empty;
@@ -1508,7 +1510,8 @@ function renderMoviesGrid(q=''){
 function renderPendingList(type){
   const arr=type==='series'?S.series.filter(s=>s.status==='pending'):S.movies.filter(m=>m.status==='pending');
   const target=type==='series'?'ps-list':'pm-list';
-  id(target).innerHTML=arr.length?arr.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◷</div><div class="empty-title">Sin pendientes</div></div>';
+  const tEl=id(target); if(!tEl) return;
+  tEl.innerHTML=arr.length?arr.map(i=>pendItemHTML(i)).join(''):'<div class="empty"><div class="empty-ico">◷</div><div class="empty-title">Sin pendientes</div></div>';
 }
 
 function filterMatch(item,f){
@@ -1570,11 +1573,13 @@ function pendItemHTML(item){
 function openDetail(itemId, type){
   const item=type==='series'?S.series.find(s=>s.id===itemId):S.movies.find(m=>m.id===itemId);
   if(!item) return;
-  id('detail-content').innerHTML=type==='series'?seriesDetailHTML(item):movieDetailHTML(item);
-  id('detail-panel').classList.add('open');
-  id('panel-overlay').classList.add('open');
+  const dc=id('detail-content'),dp=id('detail-panel'),po=id('panel-overlay');
+  if(!dc||!dp||!po) return;
+  dc.innerHTML=type==='series'?seriesDetailHTML(item):movieDetailHTML(item);
+  dp.classList.add('open');
+  po.classList.add('open');
 }
-function closePanel(){id('detail-panel').classList.remove('open');id('panel-overlay').classList.remove('open')}
+function closePanel(){const dp=id('detail-panel'),po=id('panel-overlay');if(dp)dp.classList.remove('open');if(po)po.classList.remove('open');}
 
 function seriesDetailHTML(s){
   const avg=avgRating(s);
@@ -1805,7 +1810,7 @@ function openModal(title, body){
   id('modal-body').innerHTML=body;
   id('modal-overlay').classList.add('open');
 }
-function closeModal(){id('modal-overlay').classList.remove('open')}
+function closeModal(){const mo=id('modal-overlay');if(mo)mo.classList.remove('open');}
 
 function openAddModal(){
   _pendingSeasons=[];
