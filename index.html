@@ -393,12 +393,12 @@ nav { padding: 8px 0 12px; flex: 1; }
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 7px;
-  margin-bottom: 22px;
+  gap: 10px;
+  margin-bottom: 24px;
 }
 .stat-card {
   background: var(--sys-elevated);
-  border-radius: var(--r-md);
+  border-radius: var(--r-lg);
   box-shadow: var(--sh-sm);
   transition: transform 0.15s, box-shadow 0.15s;
   animation: iosPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
@@ -407,41 +407,39 @@ nav { padding: 8px 0 12px; flex: 1; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  aspect-ratio: 1 / 1;
-  padding: 6px 4px;
+  gap: 6px;
+  padding: 14px 8px 12px;
 }
 .stat-card:nth-child(2){animation-delay:.06s}
 .stat-card:nth-child(3){animation-delay:.12s}
 .stat-card:nth-child(4){animation-delay:.18s}
 .stat-card:nth-child(5){animation-delay:.24s}
-.stat-card:hover { transform: translateY(-2px); box-shadow: var(--sh-md); }
+.stat-card:hover { transform: translateY(-3px); box-shadow: var(--sh-md); }
 .stat-card:active { transform: scale(0.93); }
 @keyframes iosPop {
   from { opacity:0; transform:scale(0.85) translateY(6px); }
   to { opacity:1; transform:scale(1) translateY(0); }
 }
 .stat-icon {
-  font-size: 20px;
+  font-size: 36px;
   line-height: 1;
 }
-.stat-card:nth-child(1) .stat-icon { filter: none; }
-.stat-card:nth-child(2) .stat-icon { filter: none; }
-.stat-card:nth-child(3) .stat-icon { filter: none; }
-.stat-card:nth-child(4) .stat-icon { filter: none; }
-.stat-card:nth-child(5) .stat-icon { filter: none; }
+.stat-card:nth-child(1) .stat-val { color: #C07030; }
+.stat-card:nth-child(2) .stat-val { color: #2A6090; }
+.stat-card:nth-child(3) .stat-val { color: var(--cin-red); }
+.stat-card:nth-child(4) .stat-val { color: #3A8A50; }
+.stat-card:nth-child(5) .stat-val { color: #5080B0; }
 .stat-val {
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 800;
-  color: var(--label);
   line-height: 1;
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
 }
 .stat-lbl {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--label3);
   font-weight: 700;
-  letter-spacing: 0.1px;
+  letter-spacing: 0.3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2734,13 +2732,21 @@ document.addEventListener('click', function(e){
     if(!confirm('¿Eliminar temporada?')) return;
     const s=S.series.find(x=>x.id===el.dataset.sid);
     s.seasons=s.seasons.filter(t=>t.id!==el.dataset.tid);
-    save(); openDetail(el.dataset.sid,'series'); return;
+    save(); openDetail(el.dataset.sid,'series');
+    setTimeout(()=>{ const tb=document.querySelector('[data-tab="t-seasons"]'); if(tb) tb.click(); },80);
+    return;
   }
   if(action==='del-ep'){
     const s=S.series.find(x=>x.id===el.dataset.sid);
     const t=s.seasons.find(x=>x.id===el.dataset.tid);
+    const tidSaved = el.dataset.tid;
     t.episodes=t.episodes.filter(ep=>ep.id!==el.dataset.eid);
-    save(); openDetail(el.dataset.sid,'series'); return;
+    save(); openDetail(el.dataset.sid,'series');
+    setTimeout(()=>{
+      const tb=document.querySelector('[data-tab="t-seasons"]'); if(tb) tb.click();
+      const acc=document.getElementById('sacc-'+tidSaved); if(acc) acc.classList.add('open');
+    },80);
+    return;
   }
   if(action==='toggle-ep'){
     const s=S.series.find(x=>x.id===el.dataset.sid);
@@ -2961,8 +2967,20 @@ function saveItemRating(itemId, type, rawVal){
 
 // Search
 id('search-input').addEventListener('input',function(){
+  const q = this.value.toLowerCase().trim();
   if(S.view==='series') renderSeriesGrid(this.value);
   else if(S.view==='movies') renderMoviesGrid(this.value);
+  else if(S.view==='dashboard' && q){
+    // Search across all series and movies
+    const matchS = S.series.filter(s=>s.title.toLowerCase().includes(q));
+    const matchM = S.movies.filter(m=>m.title.toLowerCase().includes(q));
+    const nowEl = id('now-list');
+    const recEl = id('recent-list');
+    if(nowEl) nowEl.innerHTML = matchS.filter(s=>s.status==='watching').map(s=>nowCardHTML(s)).join('') || '<div style="color:var(--label3);font-size:13px;font-weight:700">Sin resultados</div>';
+    if(recEl) recEl.innerHTML = [...matchS,...matchM].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,10).map(i=>pendItemHTML(i)).join('') || '<div style="color:var(--label3);font-size:13px;font-weight:700">Sin resultados</div>';
+  } else if(S.view==='dashboard' && !q){
+    renderDashboard();
+  }
 });
 
 // ── Export / Import ──
