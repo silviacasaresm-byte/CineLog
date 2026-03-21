@@ -2020,7 +2020,9 @@ function saveEpisode(seriesId,seasonId){
   const s=S.series.find(x=>x.id===seriesId);
   const t=s.seasons.find(x=>x.id===seasonId);
   if(!t.episodes) t.episodes=[];
-  t.episodes.push({id:uid(),number:parseInt(id('e-num')?.value)||t.episodes.length+1,title:id('e-title')?.value||'',desc:id('e-desc')?.value||'',watched:false,current:false,rating:0,minute:0});
+  const epNum = parseInt(id('e-num')?.value)||t.episodes.length+1;
+  t.episodes.push({id:uid(),number:epNum,title:id('e-title')?.value||'',desc:id('e-desc')?.value||'',watched:false,current:false,rating:0,minute:0});
+  t.episodes.sort((a,b)=>(a.number||0)-(b.number||0));
   save(); closeModal(); openDetail(seriesId,'series');
 }
 
@@ -2351,45 +2353,71 @@ async function syncSeasons(seriesId){
     const d = await res.json();
     const totalSeasons = d.number_of_seasons || 0;
     const existingNums = new Set((s.seasons||[]).map(t=>t.season_number||t.number));
-    
-    // Find which season numbers are new
+
+    // Find new seasons AND seasons that need episode restoration
     const newNums = [];
+    const existingSeasonNums = [];
     for(let i=1; i<=totalSeasons; i++){
       if(!existingNums.has(i)) newNums.push(i);
+      else existingSeasonNums.push(i);
     }
 
-    if(newNums.length === 0){
+    const allNumsToFetch = [...newNums, ...existingSeasonNums];
+    if(allNumsToFetch.length === 0){
       if(btn){ btn.textContent = '✓ Al día'; btn.disabled = false; }
       setTimeout(()=>{ if(btn){ btn.textContent=origText; } }, 2500);
       return;
     }
 
-    if(btn) btn.textContent = '⏳ Cargando '+newNums.length+' temporada(s)...';
+    if(btn) btn.textContent = '⏳ Sincronizando temporadas...';
 
-    // Fetch new seasons in parallel
-    const newSeasonData = await Promise.all(newNums.map(n=>
+    // Fetch all seasons in parallel
+    const allSeasonData = await Promise.all(allNumsToFetch.map(n=>
       fetch(TMDB_BASE+'/tv/'+s.tmdbId+'/season/'+n+'?api_key='+TMDB_KEY+'&language=es-ES')
         .then(r=>r.json()).catch(()=>null)
     ));
 
-    let added = 0;
-    newSeasonData.forEach((sd, i)=>{
+    let addedSeasons = 0, restoredEps = 0;
+
+    allSeasonData.forEach((sd, i)=>{
       if(!sd || sd.status_code) return;
-      const seasonNum = newNums[i];
-      s.seasons.push({
-        id: uid(),
-        number: seasonNum,
-        title: '',
-        desc: sd.overview||'',
-        episodes: (sd.episodes||[]).map((ep,ei)=>({
-          id: uid(),
-          number: ep.episode_number||(ei+1),
-          title: ep.name||('Episodio '+(ei+1)),
-          desc: ep.overview||'',
-          watched: false, current: false, rating: 0, minute: 0
-        }))
-      });
-      added++;
+      const seasonNum = allNumsToFetch[i];
+      const isNew = newNums.includes(seasonNum);
+
+      if(isNew){
+        // Add completely new season
+        s.seasons.push({
+          id: uid(), number: seasonNum, title: '', desc: sd.overview||'',
+          episodes: (sd.episodes||[]).map((ep,ei)=>({
+            id: uid(), number: ep.episode_number||(ei+1),
+            title: ep.name||('Episodio '+(ei+1)),
+            desc: ep.overview||'',
+            watched: false, current: false, rating: 0, minute: 0
+          }))
+        });
+        addedSeasons++;
+      } else {
+        // Restore missing episodes in existing season (preserve watched/rating data)
+        const existingSeason = s.seasons.find(t=>(t.season_number||t.number)===seasonNum);
+        if(!existingSeason) return;
+        const existingEpNums = new Set((existingSeason.episodes||[]).map(e=>e.number));
+        let restored = 0;
+        (sd.episodes||[]).forEach((ep)=>{
+          const epNum = ep.episode_number;
+          if(!existingEpNums.has(epNum)){
+            existingSeason.episodes.push({
+              id: uid(), number: epNum,
+              title: ep.name||('Episodio '+epNum),
+              desc: ep.overview||'',
+              watched: false, current: false, rating: 0, minute: 0
+            });
+            restored++;
+            restoredEps++;
+          }
+        });
+        // Sort episodes by number
+        existingSeason.episodes.sort((a,b)=>(a.number||0)-(b.number||0));
+      }
     });
 
     // Sort seasons by number
@@ -2397,7 +2425,12 @@ async function syncSeasons(seriesId){
     s.updatedAt = Date.now();
     save();
 
-    if(btn){ btn.textContent='✅ +'+added+' temporada'+(added!==1?'s':''); btn.disabled=false; }
+    let msg = '';
+    if(addedSeasons) msg += '+'+addedSeasons+' temporada'+(addedSeasons!==1?'s':'');
+    if(restoredEps) msg += (msg?' · ':'')+'+'+restoredEps+' ep'+(restoredEps!==1?'s':'')+" restaurado"+(restoredEps!==1?'s':'');
+    if(!msg) msg = 'Al día';
+
+    if(btn){ btn.textContent='✅ '+msg; btn.disabled=false; }
     setTimeout(()=>{ openDetail(seriesId,'series'); }, 1200);
 
   } catch(e){
