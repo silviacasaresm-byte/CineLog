@@ -1139,6 +1139,30 @@ details[open] .ep-desc-toggle::before { transform:rotate(90deg); }
 .user-avatar img{width:100%;height:100%;object-fit:cover}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--cin-dark);color:white;padding:10px 20px;border-radius:var(--r-pill);font-size:13px;font-weight:700;z-index:9998;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;white-space:nowrap}
 #toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── IMDb webview overlay ── */
+#imdb-overlay {
+  position: fixed; inset: 0; z-index: 9990;
+  display: none; flex-direction: column;
+  background: #000;
+}
+#imdb-overlay.open { display: flex; }
+#imdb-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: #1a1a1a;
+  flex-shrink: 0;
+}
+#imdb-bar-title { color: #F5C518; font-weight: 800; font-size: 14px; flex: 1; }
+#imdb-close-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); border: none;
+  color: white; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+#imdb-frame {
+  flex: 1; border: none; width: 100%; background: white;
+}
 </style>
 </head>
 <body>
@@ -1665,7 +1689,7 @@ function seriesDetailHTML(s){
       ? '<button class="btn btn-secondary btn-sm" data-action="sync-seasons" data-id="'+s.id+'" title="Buscar nuevas temporadas en TMDB">🔄 Sincronizar</button>'
       : '<button class="btn btn-secondary btn-sm" data-action="link-tmdb" data-id="'+s.id+'" title="Vincular con TMDB para poder sincronizar">🔗 Vincular TMDB</button>'
     )
-    +(s.imdbUrl?'<a href="'+esc(s.imdbUrl)+'" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="text-decoration:none">IMDb ↗</a>':'')
+    +(s.imdbUrl?'<button class="btn btn-secondary btn-sm" data-action="open-imdb" data-url="'+esc(s.imdbUrl)+'">IMDb ↗</button>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+s.id+'" data-type="series">🗑 Eliminar</button>'
     +'</div>'
     +'<div class="tabs"><div class="tab active" data-tab="t-info">Info</div><div class="tab" data-tab="t-seasons">Temporadas</div><div class="tab" data-tab="t-comments">Comentarios</div></div>'
@@ -1709,7 +1733,7 @@ function movieDetailHTML(m){
     +statusBadge(m.status)+'</div></div></div></div>'
     +'<div class="det-body"><div class="det-actions">'
     +'<button class="btn btn-primary" data-action="edit" data-id="'+m.id+'" data-type="movies">✎ Editar</button>'
-    +(m.imdbUrl?'<a href="'+esc(m.imdbUrl)+'" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="text-decoration:none">IMDb ↗</a>':'')
+    +(m.imdbUrl?'<button class="btn btn-secondary btn-sm" data-action="open-imdb" data-url="'+esc(m.imdbUrl)+'">IMDb ↗</button>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+m.id+'" data-type="movies">🗑 Eliminar</button>'
     +'</div>'
     +'<div class="tabs"><div class="tab active" data-tab="m-info">Info</div><div class="tab" data-tab="m-quotes">Frases</div><div class="tab" data-tab="m-comments">Comentarios</div></div>'
@@ -2609,7 +2633,14 @@ document.addEventListener('click', function(e){
   if(action==='nav'){ navigate(el.dataset.nav); return; }
   // rate-item removed from list view
   if(action==='close-panel'){ closePanel(); return; }
-  if(action==='open-imdb'){ var u=el.dataset.url; if(u) window.open(u,'_blank','noopener,noreferrer'); return; }
+  if(action==='open-imdb'){
+    var u=el.dataset.url; if(!u) return;
+    var overlay=document.getElementById('imdb-overlay');
+    var frame=document.getElementById('imdb-frame');
+    frame.src=u;
+    overlay.classList.add('open');
+    return;
+  }
   if(action==='toggle-filters'){
     const drawerId = el.dataset.section+'-filter-drawer';
     const drawer = id(drawerId);
@@ -3280,5 +3311,14 @@ id('btn-import').addEventListener('change', function(){
 <script>
 if("serviceWorker"in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});}
 </script>
+
+<!-- IMDb overlay -->
+<div id="imdb-overlay">
+  <div id="imdb-bar">
+    <span id="imdb-bar-title">IMDb</span>
+    <button id="imdb-close-btn" onclick="document.getElementById('imdb-overlay').classList.remove('open');document.getElementById('imdb-frame').src='about:blank'">✕</button>
+  </div>
+  <iframe id="imdb-frame" src="about:blank" allowfullscreen></iframe>
+</div>
 </body>
 </html>
