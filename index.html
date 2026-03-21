@@ -1634,7 +1634,7 @@ function openDetail(itemId, type){
   dp.classList.add('open');
   po.classList.add('open');
 }
-function closePanel(){const dp=id('detail-panel'),po=id('panel-overlay');if(dp)dp.classList.remove('open');if(po)po.classList.remove('open');}
+function closePanel(){const dp=id('detail-panel'),po=id('panel-overlay');if(dp)dp.classList.remove('open');if(po)po.classList.remove('open');if(S.view==='dashboard')renderDashboard();}
 
 function seriesDetailHTML(s){
   const avg=avgRating(s);
@@ -1665,7 +1665,7 @@ function seriesDetailHTML(s){
       ? '<button class="btn btn-secondary btn-sm" data-action="sync-seasons" data-id="'+s.id+'" title="Buscar nuevas temporadas en TMDB">🔄 Sincronizar</button>'
       : '<button class="btn btn-secondary btn-sm" data-action="link-tmdb" data-id="'+s.id+'" title="Vincular con TMDB para poder sincronizar">🔗 Vincular TMDB</button>'
     )
-    +(s.imdbUrl?'<a href="'+esc(s.imdbUrl)+'" target="_blank" class="btn btn-secondary btn-sm">IMDb ↗</a>':'')
+    +(s.imdbUrl?'<button class="btn btn-secondary btn-sm" onclick="window.open(\''+esc(s.imdbUrl)+'\',\'_blank\',\'noopener,noreferrer\')">IMDb ↗</button>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+s.id+'" data-type="series">🗑 Eliminar</button>'
     +'</div>'
     +'<div class="tabs"><div class="tab active" data-tab="t-info">Info</div><div class="tab" data-tab="t-seasons">Temporadas</div><div class="tab" data-tab="t-comments">Comentarios</div></div>'
@@ -1709,7 +1709,7 @@ function movieDetailHTML(m){
     +statusBadge(m.status)+'</div></div></div></div>'
     +'<div class="det-body"><div class="det-actions">'
     +'<button class="btn btn-primary" data-action="edit" data-id="'+m.id+'" data-type="movies">✎ Editar</button>'
-    +(m.imdbUrl?'<a href="'+esc(m.imdbUrl)+'" target="_blank" class="btn btn-secondary btn-sm">IMDb ↗</a>':'')
+    +(m.imdbUrl?'<button class="btn btn-secondary btn-sm" onclick="window.open(\''+esc(m.imdbUrl)+'\',\'_blank\',\'noopener,noreferrer\')">IMDb ↗</button>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+m.id+'" data-type="movies">🗑 Eliminar</button>'
     +'</div>'
     +'<div class="tabs"><div class="tab active" data-tab="m-info">Info</div><div class="tab" data-tab="m-quotes">Frases</div><div class="tab" data-tab="m-comments">Comentarios</div></div>'
