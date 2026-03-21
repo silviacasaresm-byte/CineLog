@@ -1476,7 +1476,7 @@ function listItemHTML(item, type){
               +'<div style="font-size:9px;color:var(--label3);font-weight:700;margin-top:2px">'+watched+'/'+total+' · '+pct+'%</div>':'')
     +'</div>'
     +'<div class="list-right" style="gap:6px">'
-    +'<div class="list-rating" data-action="rate-item" data-id="'+item.id+'" data-type="'+type+'" style="cursor:pointer;font-size:15px;font-weight:800;color:'+(avg?'var(--cin-red)':'var(--label3)')+';min-width:36px;text-align:center" title="Cambiar nota">'+(avg?'★ '+avg:'★ —')+'</div>'
+    +'<div style="font-size:15px;font-weight:800;color:'+(avg?'var(--cin-red)':'var(--label3)')+';min-width:36px;text-align:center">'+(avg?'★ '+avg:'')+'</div>'
     +'<div class="list-plat">'+esc(item.platform||'')+'</div>'
     +(item.imdbRating?'<span class="imdb-badge">'+item.imdbRating+'</span>':'')
     +'</div></div>';
@@ -1665,7 +1665,7 @@ function seriesDetailHTML(s){
       ? '<button class="btn btn-secondary btn-sm" data-action="sync-seasons" data-id="'+s.id+'" title="Buscar nuevas temporadas en TMDB">🔄 Sincronizar</button>'
       : '<button class="btn btn-secondary btn-sm" data-action="link-tmdb" data-id="'+s.id+'" title="Vincular con TMDB para poder sincronizar">🔗 Vincular TMDB</button>'
     )
-    +(s.imdbUrl?'<button class="btn btn-secondary btn-sm" onclick="window.open(\''+esc(s.imdbUrl)+'\',\'_blank\',\'noopener,noreferrer\')">IMDb ↗</button>':'')
+    +(s.imdbUrl?'<button class="btn btn-secondary btn-sm" data-action="open-imdb" data-url="'+esc(s.imdbUrl)+'">IMDb ↗</button>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+s.id+'" data-type="series">🗑 Eliminar</button>'
     +'</div>'
     +'<div class="tabs"><div class="tab active" data-tab="t-info">Info</div><div class="tab" data-tab="t-seasons">Temporadas</div><div class="tab" data-tab="t-comments">Comentarios</div></div>'
@@ -1709,7 +1709,7 @@ function movieDetailHTML(m){
     +statusBadge(m.status)+'</div></div></div></div>'
     +'<div class="det-body"><div class="det-actions">'
     +'<button class="btn btn-primary" data-action="edit" data-id="'+m.id+'" data-type="movies">✎ Editar</button>'
-    +(m.imdbUrl?'<button class="btn btn-secondary btn-sm" onclick="window.open(\''+esc(m.imdbUrl)+'\',\'_blank\',\'noopener,noreferrer\')">IMDb ↗</button>':'')
+    +(m.imdbUrl?'<button class="btn btn-secondary btn-sm" data-action="open-imdb" data-url="'+esc(m.imdbUrl)+'">IMDb ↗</button>':'')
     +'<button class="btn btn-danger btn-sm" data-action="delete" data-id="'+m.id+'" data-type="movies">🗑 Eliminar</button>'
     +'</div>'
     +'<div class="tabs"><div class="tab active" data-tab="m-info">Info</div><div class="tab" data-tab="m-quotes">Frases</div><div class="tab" data-tab="m-comments">Comentarios</div></div>'
@@ -2607,8 +2607,9 @@ document.addEventListener('click', function(e){
   const action=el.dataset.action;
 
   if(action==='nav'){ navigate(el.dataset.nav); return; }
-  if(action==='rate-item'){ openQuickRate(el.dataset.id, el.dataset.type, el); return; }
+  // rate-item removed from list view
   if(action==='close-panel'){ closePanel(); return; }
+  if(action==='open-imdb'){ var u=el.dataset.url; if(u) window.open(u,'_blank','noopener,noreferrer'); return; }
   if(action==='toggle-filters'){
     const drawerId = el.dataset.section+'-filter-drawer';
     const drawer = id(drawerId);
