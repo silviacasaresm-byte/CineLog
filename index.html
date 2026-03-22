@@ -2813,8 +2813,7 @@ document.addEventListener('click', function(e){
     return;
   }
   if(action==='rate-season'){
-    // handled via change event
-    return;
+    return; // handled via change event
   }
   if(action==='rate-item-btn'){
     const inputEl=document.getElementById(el.dataset.input);
@@ -2953,7 +2952,10 @@ function saveItemRating(itemId, type, rawVal){
   if(!item) return;
   item.userRating=val;
   item.updatedAt=Date.now();
-  save();
+  // Save immediately for ratings (no debounce)
+  updateBadges();
+  if(window._sbSaveNow) window._sbSaveNow().then(()=>showToast('★ Puntuación guardada'));
+  else save();
   // Update display span
   const displayEl=document.getElementById('rate-display-'+itemId);
   if(displayEl) displayEl.textContent=val?(val+' pts'):'';
@@ -3109,7 +3111,29 @@ id('btn-import').addEventListener('change', function(){
 
   window._currentUser = null;
 
-  // ── Save (debounced) ──
+  // ── Save immediately (for ratings and important actions) ──
+  async function doSave() {
+    if (!window._currentUser) { showToast('⚠️ Sin sesión'); return; }
+    try {
+      var payload = {
+        id: window._currentUser.id,
+        series: S.series,
+        movies: S.movies,
+        updated_at: new Date().toISOString()
+      };
+      var res = await sb.from('user_data').upsert(payload, { onConflict: 'id' });
+      if (res.error) {
+        var res2 = await sb.from('user_data').insert(payload);
+        if (res2.error) throw res2.error;
+      }
+    } catch(e) {
+      console.error('Save error', e);
+      showToast('⚠️ Error al guardar: ' + (e.message||e.code||JSON.stringify(e)));
+    }
+  }
+  window._sbSaveNow = doSave;
+
+  // ── Save (debounced for frequent actions like episode toggles) ──
   var _st = null;
   window._sbSave = function() {
     clearTimeout(_st);
