@@ -1646,6 +1646,7 @@ function seriesDetailHTML(s){
     +'<div class="det-header-content"><div class="det-poster">'+posterHTML(s,true)+'</div>'
     +'<div style="flex:1"><div class="det-title">'+esc(s.title)+'</div>'
     +'<div class="det-meta">'+(s.startYear||'?')+(s.endYear?'–'+s.endYear:'')+' · '+total+' eps · <span class="'+platClass(s.platform)+'">'+esc(s.platform||'—')+'</span></div>'
+    +(s.productionStatus?'<div style="font-size:12px;font-weight:800;margin-bottom:6px;padding:4px 10px;background:var(--fill3);border-radius:var(--r-pill);display:inline-block">'+esc(s.productionStatus)+'</div>':'')
     +'<div class="det-ratings">'
     +'<div class="rat-block"><span class="rat-lbl">NOTA</span><span class="rat-val" id="series-avg-display" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="toggleRatingInline(\'' + s.id + '\',\'series\')">'
     +(avg?'★ '+avg:'<span style="color:var(--label3);font-size:13px">Puntuar</span>')
@@ -1970,6 +1971,7 @@ function saveItem(){
     imdbRating:parseFloat(id('f-imdb-rating')?.value)||null,
     imdbUrl:id('f-imdb-url')?.value||'',
     tmdbId:parseInt(id('f-tmdb-id')?.value)||null,
+    productionStatus:id('f-prod-status')?.value||null,
     posterUrl:id('f-poster')?.value||'',
     emoji:id('f-emoji')?.value||'',
     synopsis:id('f-synopsis')?.value||'',
@@ -2101,6 +2103,27 @@ async function tmdbFill(tmdbId, mediaType){
       if(mb) mb.appendChild(hiddenTmdb);
     }
     hiddenTmdb.value = tmdbId;
+
+    // ── Production status (TV series only) ──
+    if(mediaType==='tv' && d.status){
+      const PS_MAP = {
+        'Returning Series': '🔄 Renovada — nueva temporada confirmada',
+        'In Production':    '🎬 En producción',
+        'Planned':          '📋 Anunciada',
+        'Pilot':            '🎬 Piloto',
+        'Ended':            '✅ Finalizada',
+        'Canceled':         '❌ Cancelada',
+        'Cancelled':        '❌ Cancelada',
+      };
+      const ps = PS_MAP[d.status] || d.status;
+      let hiddenPs = id('f-prod-status');
+      if(!hiddenPs){
+        hiddenPs = document.createElement('input');
+        hiddenPs.type = 'hidden'; hiddenPs.id = 'f-prod-status';
+        const mb = id('modal-body'); if(mb) mb.appendChild(hiddenPs);
+      }
+      hiddenPs.value = ps;
+    }
     if(mediaType==='movie'){
       const dir=(d.credits?.crew||[]).filter(c=>c.job==='Director').map(c=>c.name).join(', ');
       if(dir) set('f-director',dir);
@@ -2350,6 +2373,16 @@ async function syncSeasons(seriesId){
     const res = await fetch(TMDB_BASE+'/tv/'+s.tmdbId+'?api_key='+TMDB_KEY+'&language=es-ES');
     const d = await res.json();
     const totalSeasons = d.number_of_seasons || 0;
+    // Update production status
+    if(d.status){
+      const PS_MAP = {
+        'Returning Series':'🔄 Renovada — nueva temporada confirmada',
+        'In Production':'🎬 En producción','Planned':'📋 Anunciada',
+        'Pilot':'🎬 Piloto','Ended':'✅ Finalizada',
+        'Canceled':'❌ Cancelada','Cancelled':'❌ Cancelada',
+      };
+      s.productionStatus = PS_MAP[d.status]||d.status;
+    }
     const existingNums = new Set((s.seasons||[]).map(t=>t.season_number||t.number));
 
     // Find new seasons AND seasons that need episode restoration
